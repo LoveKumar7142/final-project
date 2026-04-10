@@ -23,6 +23,7 @@ import api, {
   uploadSiteAsset,
   type AdminContentPayload,
   type SiteAsset,
+  type SiteSetting,
 } from "../api/axios";
 import type { Project } from "../types/contentModels";
 
@@ -66,6 +67,7 @@ const defaultProjectForm: ProjectFormState = {
 
 const defaultContentEditors = {
   profile: "{}",
+  siteSettings: "[]",
   siteAssets: "[]",
   socialLinks: "[]",
   homeStats: "[]",
@@ -156,6 +158,7 @@ export default function Dashboard() {
 
     setContentEditors({
       profile: safeJsonStringify(adminContent.profile || {}),
+      siteSettings: safeJsonStringify(adminContent.siteSettings || []),
       siteAssets: safeJsonStringify(adminContent.siteAssets || []),
       socialLinks: safeJsonStringify(adminContent.socialLinks || []),
       homeStats: safeJsonStringify(adminContent.homeStats || []),
@@ -173,6 +176,14 @@ export default function Dashboard() {
       return [];
     }
   }, [contentEditors.siteAssets]);
+
+  const parsedSiteSettings = useMemo(() => {
+    try {
+      return JSON.parse(contentEditors.siteSettings) as SiteSetting[];
+    } catch {
+      return [];
+    }
+  }, [contentEditors.siteSettings]);
 
   const saveProjectMutation = useMutation({
     mutationFn: async () => {
@@ -242,6 +253,7 @@ export default function Dashboard() {
     mutationFn: async () => {
       const payload: AdminContentPayload = {
         profile: parseJsonEditor<Record<string, unknown>>("Profile", contentEditors.profile),
+        siteSettings: parseJsonEditor<SiteSetting[]>("Site settings", contentEditors.siteSettings),
         siteAssets: parseJsonEditor<SiteAsset[]>("Site assets", contentEditors.siteAssets),
         socialLinks: parseJsonEditor<Array<Record<string, unknown>>>("Social links", contentEditors.socialLinks),
         homeStats: parseJsonEditor<Array<Record<string, unknown>>>("Home stats", contentEditors.homeStats),
@@ -490,6 +502,52 @@ export default function Dashboard() {
             <span className="mb-2 block text-sm font-medium">Site Assets JSON</span>
             <textarea className="min-h-72 w-full rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 font-mono text-sm outline-none" value={contentEditors.siteAssets} onChange={(e) => setContentEditors((current) => ({ ...current, siteAssets: e.target.value }))} />
           </label>
+
+          <div className="mt-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold">Order Email Settings</h3>
+                <p className="mt-2 text-sm text-[var(--muted)]">Ye values database me save hongi aur naya order aate hi notification isi list par jayegi.</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--border)] px-4 py-2 text-sm"
+                onClick={() => saveContentMutation.mutate()}
+                disabled={saveContentMutation.isPending}
+              >
+                {saveContentMutation.isPending ? "Saving..." : "Save Email Settings"}
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {parsedSiteSettings.map((setting, index) => (
+                <div key={`${setting.setting_key}-${index}`} className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4">
+                  <p className="font-semibold">{setting.label || setting.setting_key}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Key: {setting.setting_key}</p>
+                  <Input
+                    className="mt-4"
+                    placeholder="Setting value"
+                    value={setting.setting_value || ""}
+                    onChange={(e) => {
+                      const next = parsedSiteSettings.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, setting_value: e.target.value } : item,
+                      );
+                      setContentEditors((current) => ({ ...current, siteSettings: safeJsonStringify(next) }));
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <label className="mt-6 block">
+              <span className="mb-2 block text-sm font-medium">Site Settings JSON</span>
+              <textarea
+                className="min-h-56 w-full rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 font-mono text-sm outline-none"
+                value={contentEditors.siteSettings}
+                onChange={(e) => setContentEditors((current) => ({ ...current, siteSettings: e.target.value }))}
+              />
+            </label>
+          </div>
         </Card>
       ) : null}
 
@@ -506,6 +564,7 @@ export default function Dashboard() {
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
             {[
               ["profile", "Profile JSON"],
+              ["siteSettings", "Site Settings JSON"],
               ["socialLinks", "Social Links JSON"],
               ["homeStats", "Home Stats JSON"],
               ["capabilities", "Capabilities JSON"],

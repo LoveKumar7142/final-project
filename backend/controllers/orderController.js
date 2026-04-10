@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import razorpay from "../config/razorpay.js";
+import { sendAutoReplyEmail, sendOrderNotificationEmail } from "../utils/mailer.js";
 
 // 🔹 Create Order (Hire Me)
 export const createHireOrder = async (req, res) => {
@@ -59,6 +60,26 @@ export const verifyHirePayment = async (req, res) => {
       "INSERT INTO orders (name, email, project_type, description, budget, advance_paid, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
       [name, email, project_type, description, budget, true, "pending"],
     );
+
+    try {
+      await sendOrderNotificationEmail({
+        name,
+        email,
+        projectType: project_type,
+        description,
+        budget,
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+      });
+      await sendAutoReplyEmail({
+        to: email,
+        subject: "Your order has been received",
+        intro: `Hi ${name},`,
+        body: "Thanks for placing your order. Your payment has been verified successfully and we will reach out to you shortly with the next steps.",
+      });
+    } catch (emailError) {
+      console.error("Order notification email failed:", emailError.message);
+    }
 
     res.json({ message: "Order placed successfully" });
   } catch (error) {

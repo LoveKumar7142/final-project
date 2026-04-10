@@ -2,9 +2,12 @@
 import type { Project } from "../types/contentModels";
 
 const AUTH_STORAGE_KEY = "portfolio_auth";
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const fallbackApiBaseUrl =
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:5000";
 
 const api = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: configuredApiBaseUrl || fallbackApiBaseUrl,
 });
 
 api.interceptors.request.use((config) => {
@@ -45,8 +48,18 @@ export type SiteAsset = {
   sort_order?: number;
 };
 
+export type SiteSetting = {
+  id?: number;
+  setting_key: string;
+  label: string;
+  setting_value?: string | null;
+  setting_group?: string | null;
+  sort_order?: number;
+};
+
 export type AdminContentPayload = {
   profile: Record<string, unknown> | null;
+  siteSettings: SiteSetting[];
   siteAssets: SiteAsset[];
   socialLinks: Array<Record<string, unknown>>;
   homeStats: Array<Record<string, unknown>>;

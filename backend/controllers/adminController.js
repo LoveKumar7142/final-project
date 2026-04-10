@@ -26,6 +26,9 @@ const readContentBundle = async () => {
   const [profileRows] = await pool.query(
     "SELECT * FROM portfolio_profile ORDER BY id ASC LIMIT 1",
   );
+  const [siteSettings] = await pool.query(
+    "SELECT * FROM site_settings ORDER BY sort_order ASC, id ASC",
+  );
   const [siteAssets] = await pool.query(
     "SELECT * FROM site_assets ORDER BY sort_order ASC, id ASC",
   );
@@ -50,6 +53,7 @@ const readContentBundle = async () => {
 
   return {
     profile: profileRows[0] || null,
+    siteSettings,
     siteAssets,
     socialLinks,
     homeStats,
@@ -135,6 +139,7 @@ export const saveAdminContent = async (req, res) => {
   try {
     const existingContent = await readContentBundle();
     const profile = req.body.profile || {};
+    const siteSettings = normalizeArray(req.body.siteSettings);
     const siteAssets = normalizeArray(req.body.siteAssets);
     const socialLinks = normalizeArray(req.body.socialLinks);
     const homeStats = normalizeArray(req.body.homeStats);
@@ -190,6 +195,21 @@ export const saveAdminContent = async (req, res) => {
           toText(profile.location),
           toText(profile.email),
           toText(profile.phone),
+        ],
+      );
+    }
+
+    await connection.query("DELETE FROM site_settings");
+    for (let index = 0; index < siteSettings.length; index += 1) {
+      const item = siteSettings[index];
+      await connection.query(
+        "INSERT INTO site_settings (setting_key, label, setting_value, setting_group, sort_order) VALUES (?, ?, ?, ?, ?)",
+        [
+          toText(item.setting_key),
+          toText(item.label) || toText(item.setting_key),
+          toText(item.setting_value),
+          toText(item.setting_group) || "general",
+          toNumber(item.sort_order, index + 1),
         ],
       );
     }

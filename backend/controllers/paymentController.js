@@ -1,6 +1,7 @@
 import razorpay from "../config/razorpay.js";
 import crypto from "crypto";
 import pool from "../config/db.js";
+import { sendAutoReplyEmail, sendProjectSaleNotificationEmail } from "../utils/mailer.js";
 
 // 🔹 Create Order
 export const createOrder = async (req, res) => {
@@ -60,6 +61,30 @@ export const verifyPayment = async (req, res) => {
       "INSERT INTO purchases (user_id, project_id, payment_status, payment_id) VALUES (?, ?, ?, ?)",
       [req.user.id, projectId, "completed", razorpay_payment_id],
     );
+
+    const [projects] = await pool.query("SELECT title, price FROM projects WHERE id = ?", [projectId]);
+    const [users] = await pool.query("SELECT name, email FROM users WHERE id = ?", [req.user.id]);
+    const project = projects[0];
+    const user = users[0];
+
+    try {
+      await sendProjectSaleNotificationEmail({
+        customerName: user?.name || "Customer",
+        customerEmail: user?.email || "",
+        projectTitle: project?.title || `Project #${projectId}`,
+        amount: project?.price || 0,
+        paymentId: razorpay_payment_id,
+      });
+
+      await sendAutoReplyEmail({
+        to: user?.email || "",
+        subject: `Payment received for ${project?.title || "your project"}`,
+        intro: `Hi ${user?.name || "there"},`,
+        body: `Your payment has been received successfully for ${project?.title || "the selected project"}. You can now access your purchase from your account.`,
+      });
+    } catch (mailError) {
+      console.error("Project sale email flow failed:", mailError.message);
+    }
 
     res.json({ message: "Payment successful" });
   } catch (error) {
