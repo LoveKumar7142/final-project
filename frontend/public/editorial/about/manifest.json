@@ -1,0 +1,46 @@
+[
+    {
+        "section":  "beyond-code",
+        "query":  "music technology headphones",
+        "file":  "beyond-code.jpg",
+        "title":  "Mojo MH4 Stereo Headphone console - rack mountable",
+        "creator":  "roland",
+        "license":  "cc0",
+        "source":  "flickr",
+        "url":  "https://live.staticflickr.com/7/11992685_f29f00df25_b.jpg",
+        "foreign_landing_url":  "https://www.flickr.com/photos/35034347371@N01/11992685"
+    },
+    {
+        "section":  "profile-snapshot",
+        "query":  "professional portrait laptop office",
+        "file":  "profile-snapshot.jpg",
+        "title":  "Business Man",
+        "creator":  "Direct Media",
+        "license":  "cc0",
+        "source":  "stocksnap",
+        "url":  "https://cdn.stocksnap.io/img-thumbs/960w/A92FDFKT0F.jpg",
+        "foreign_landing_url":  "https://stocksnap.io/photo/business-man-A92FDFKT0F"
+    },
+    {
+        "section":  "education",
+        "query":  "graduation books university",
+        "file":  "education.jpg",
+        "title":  "Edwin Sandys, Archbishop of York, and his wife Cicely Wilford",
+        "creator":  "lisby1",
+        "license":  "pdm",
+        "source":  "flickr",
+        "url":  "https://live.staticflickr.com/2500/3902084196_1c5a161033.jpg",
+        "foreign_landing_url":  "https://www.flickr.com/photos/60861613@N00/3902084196"
+    },
+    {
+        "section":  "contact-socials",
+        "query":  "communication phone laptop desk",
+        "file":  "contact-socials.jpg",
+        "title":  "Hand Holding an iPhone 4",
+        "creator":  "Image Catalog",
+        "license":  "cc0",
+        "source":  "flickr",
+        "url":  "https://live.staticflickr.com/323/18692171181_1c629359e2_b.jpg",
+        "foreign_landing_url":  "https://www.flickr.com/photos/132795455@N08/18692171181"
+    }
+]

@@ -1,0 +1,68 @@
+import razorpay from "../config/razorpay.js";
+import crypto from "crypto";
+import pool from "../config/db.js";
+
+// 🔹 Create Order
+export const createOrder = async (req, res) => {
+  try {
+    const { projectId } = req.body;
+
+    const [project] = await pool.query("SELECT * FROM projects WHERE id=?", [
+      projectId,
+    ]);
+
+    if (project.length === 0) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const amount = project[0].price * 100; // paise
+
+    const options = {
+      amount,
+      currency: "INR",
+      receipt: `receipt_${Date.now()}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    res.json({
+      order,
+      key: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 🔹 Verify Payment
+export const verifyPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      projectId,
+    } = req.body;
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Payment verification failed" });
+    }
+
+    // ✅ Save purchase
+    await pool.query(
+      "INSERT INTO purchases (user_id, project_id, payment_status, payment_id) VALUES (?, ?, ?, ?)",
+      [req.user.id, projectId, "completed", razorpay_payment_id],
+    );
+
+    res.json({ message: "Payment successful" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
