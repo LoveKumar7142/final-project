@@ -250,3 +250,20 @@ export const deleteProject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const reorderProjects = async (req, res) => {
+  try {
+    const { projectIds } = req.body;
+    if (!projectIds || !Array.isArray(projectIds)) {
+       return res.status(400).json({ message: "Invalid project array" });
+    }
+    
+    // Process reordering
+    for (let i = 0; i < projectIds.length; i++) {
+        await pool.query("UPDATE projects SET sort_order = ? WHERE id = ?", [i, projectIds[i]]);
+    }
+    res.json({ message: "Projects reordered successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

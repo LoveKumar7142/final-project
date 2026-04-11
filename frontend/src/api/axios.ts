@@ -186,6 +186,11 @@ export const removeProject = async (id: number) => {
   return data;
 };
 
+export const reorderProjects = async (projectIds: number[]) => {
+  const { data } = await api.put<{ message: string }>("/api/projects/reorder", { projectIds });
+  return data;
+};
+
 export const uploadProjectImage = async (id: number, file: File) => {
   const formData = new FormData();
   formData.append("file", file);

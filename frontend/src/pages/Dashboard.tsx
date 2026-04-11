@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, Reorder } from "framer-motion";
 import { Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FiDownload, FiFolder, FiMessageSquare, FiShoppingBag, FiTrash2, FiUploadCloud } from "react-icons/fi";
@@ -25,6 +25,7 @@ import api, {
   uploadProjectImage,
   uploadSiteAsset,
   deleteSiteAsset,
+  reorderProjects,
   type AdminContentPayload,
   type SiteAsset,
   type SiteSetting,
@@ -112,6 +113,7 @@ export default function Dashboard() {
   const [archiveFile, setArchiveFile] = useState<File | null>(null);
   const [contentEditors, setContentEditors] = useState(defaultContentEditors);
   const [assetFiles, setAssetFiles] = useState<Record<string, File | null>>({});
+  const [localProjectsList, setLocalProjectsList] = useState<Project[]>([]);
 
   const purchasedIds = useMemo(() => {
     try {
@@ -139,6 +141,12 @@ export default function Dashboard() {
     },
     enabled: isAuthenticated && isAdmin,
   });
+
+  useEffect(() => {
+    if (adminProjects && adminProjects.length > 0) {
+      setLocalProjectsList(adminProjects);
+    }
+  }, [adminProjects]);
 
   const { data: adminContent } = useQuery({
     queryKey: ["admin-content"],
@@ -257,6 +265,25 @@ export default function Dashboard() {
       toast.success("Project deleted successfully");
     },
   });
+
+  const reorderProjectsMutation = useMutation({
+    mutationFn: async (orderedList: Project[]) => {
+      const ids = orderedList.map((p) => p.id);
+      return reorderProjects(ids);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-projects"] });
+    },
+    onError: () => {
+      toast.error("Failed to reorder projects");
+      setLocalProjectsList(adminProjects);
+    },
+  });
+
+  const handleReorder = (newOrder: Project[]) => {
+    setLocalProjectsList(newOrder);
+    reorderProjectsMutation.mutate(newOrder);
+  };
 
   const saveContentMutation = useMutation({
     mutationFn: async () => {
@@ -491,24 +518,31 @@ export default function Dashboard() {
           </Card>
 
           <Card className="rounded-[36px] p-6">
-            <h2 className="text-2xl font-semibold">Existing Projects</h2>
+            <div>
+              <h2 className="text-2xl font-semibold">Existing Projects</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">Drag and drop projects to instantly reorder them everywhere.</p>
+            </div>
             <div className="mt-5 space-y-3">
-              {projectsLoading ? <PageLoader className="min-h-[200px]" message="Loading projects..." /> : adminProjects.map((project) => (
-                <div key={project.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{project.title}</p>
-                      <p className="mt-1 text-sm text-[var(--muted)]">{project.slug}</p>
-                      <p className="mt-2 text-sm text-[var(--muted)]">{project.tagline}</p>
-                      <p className="mt-2 text-xs text-[var(--muted)]">Downloads: {project.download_count || 0} | {project.category || "Paid"} | Pos: {project.sort_order || 0}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button type="button" className="rounded-full border border-[var(--border)] px-3 py-2 text-xs" onClick={() => startEditingProject(project)}>Edit</button>
-                      <button type="button" className="rounded-full border border-red-300 px-3 py-2 text-xs text-red-500" onClick={() => { if (window.confirm(`Delete ${project.title}?`)) { deleteProjectMutation.mutate(project.id); } }}>Delete</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {projectsLoading ? <PageLoader className="min-h-[200px]" message="Loading projects..." /> : (
+                <Reorder.Group axis="y" values={localProjectsList} onReorder={handleReorder} className="space-y-3">
+                  {localProjectsList.map((project) => (
+                    <Reorder.Item key={project.id} value={project} className="cursor-grab active:cursor-grabbing rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4 relative bg-[var(--bg)] xl:bg-[var(--bg-soft)]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold">{project.title}</p>
+                          <p className="mt-1 text-sm text-[var(--muted)]">{project.slug}</p>
+                          <p className="mt-2 text-sm text-[var(--muted)]">{project.tagline}</p>
+                          <p className="mt-2 text-xs text-[var(--muted)]">Downloads: {project.download_count || 0} | {project.category || "Paid"} | Pos: {project.sort_order || 0}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onPointerDown={(e) => e.stopPropagation()} className="rounded-full border border-[var(--border)] px-3 py-2 text-xs hover:bg-[var(--bg)] transition-colors" onClick={(e) => { e.stopPropagation(); startEditingProject(project); }}>Edit</button>
+                          <button type="button" onPointerDown={(e) => e.stopPropagation()} className="rounded-full border border-red-300 px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors" onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete ${project.title}?`)) { deleteProjectMutation.mutate(project.id); } }}>Delete</button>
+                        </div>
+                      </div>
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+              )}
             </div>
           </Card>
         </motion.section>
