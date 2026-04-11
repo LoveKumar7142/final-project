@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import api from "../api/axios";
+import AppLoader from "../components/ui/AppLoader";
 
 type AuthUser = {
   id: number;
@@ -119,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <AppLoader isLoading={isLoading} message="Initializing Workspace..." />
     </AuthContext.Provider>
   );
 }

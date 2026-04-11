@@ -1,4 +1,5 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { FiAward, FiBookOpen, FiMail, FiMapPin, FiPhone } from "react-icons/fi";
 import Card from "../components/ui/Card";
 import api from "../api/axios";
@@ -21,7 +22,11 @@ export default function About() {
 
   return (
     <div className="space-y-8 sm:space-y-10">
-      <section className="grid items-start gap-5 lg:gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="grid items-start gap-5 lg:gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">About Me</p>
           <h1 className="section-title mt-3">{data?.story?.title || data?.profile?.full_name || "About"}</h1>
@@ -38,11 +43,13 @@ export default function About() {
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">Profile Snapshot</p>
           <div className="mt-5 overflow-hidden rounded-[28px] border border-[var(--border)]">
-            <img
-              src={profileSnapshot}
-              alt="Professional profile workspace"
-              className="h-70 w-full object-cover"
-            />
+              {profileSnapshot ? (
+                <img
+                  src={profileSnapshot}
+                  alt="Profile snapshot"
+                  className="h-72 w-full object-cover"
+                />
+              ) : null}
           </div>
           <div className="mt-5 space-y-4">
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-soft)] p-5">
@@ -59,17 +66,23 @@ export default function About() {
             </div>
           </div>
         </Card>
-      </section>
+      </motion.section>
 
-      <section className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">Education</p>
           <div className="mt-5 overflow-hidden rounded-[28px] border border-[var(--border)]">
-            <img
-              src={educationImage}
-              alt="Education and study related visual"
-              className="h-44 w-full object-cover"
-            />
+                {educationImage ? (
+                  <img
+                    src={educationImage}
+                    alt="Education and setup"
+                    className="h-[200px] w-full object-cover sm:h-[300px]"
+                  />
+                ) : null}
           </div>
           <div className="mt-5 space-y-4">
             {(data?.education || []).map((item) => (
@@ -103,9 +116,13 @@ export default function About() {
             ))}
           </div>
         </Card>
-      </section>
+      </motion.section>
 
-      <section className="grid items-start gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:gap-6">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="grid items-start gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:gap-6">
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">Real Project Journey</p>
           <div className="mt-4 space-y-4 text-sm leading-7 text-[var(--muted)] sm:text-base">
@@ -133,9 +150,13 @@ export default function About() {
               ))}
           </div>
         </Card>
-      </section>
+      </motion.section>
 
-      <section className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="grid items-start gap-5 lg:grid-cols-2 lg:gap-6">
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">What Makes Me Different</p>
           <div className="mt-5 space-y-3">
@@ -157,11 +178,13 @@ export default function About() {
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">Contact & Socials</p>
           <div className="mt-5 overflow-hidden rounded-[28px] border border-[var(--border)]">
-            <img
-              src={contactSocialsImage}
-              alt="Contact and digital communication setup"
-              className="h-44 w-full object-cover"
-            />
+                {contactSocialsImage ? (
+                  <img
+                    src={contactSocialsImage}
+                    alt="Process mapping"
+                    className="h-44 w-full object-cover transition duration-700 group-hover:scale-105"
+                  />
+                ) : null}
           </div>
           <div className="mt-5 space-y-4">
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-soft)] p-5">
@@ -188,9 +211,13 @@ export default function About() {
             </div>
           </div>
         </Card>
-      </section>
+      </motion.section>
 
-      <section>
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }} >
         <Card className="rounded-[36px] p-7 sm:p-8">
           <div className="flex items-start gap-4">
             <FiAward className="mt-1 text-xl" />
@@ -202,7 +229,7 @@ export default function About() {
             </div>
           </div>
         </Card>
-      </section>
+      </motion.section>
     </div>
   );
 }

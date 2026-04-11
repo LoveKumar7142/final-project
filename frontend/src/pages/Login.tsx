@@ -32,7 +32,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      toast.error("Email aur password dono chahiye");
+      toast.error("Email and password are required");
       return;
     }
 
@@ -50,7 +50,7 @@ export default function Login() {
 
   const handleFirebaseLogin = async (provider: "google" | "github") => {
     if (!firebaseAuth || !isFirebaseConfigured) {
-      toast.error("Firebase config missing hai");
+      toast.error("Firebase configuration is missing");
       return;
     }
 
@@ -81,9 +81,11 @@ export default function Login() {
         <p className="section-copy mt-4">
           Visitors can browse freely, but sign in is required when you purchase a project, access downloads, or create paid hiring flows.
         </p>
-        <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
-          <img src={loginImage} alt="Modern developer workspace" className="h-52 w-full object-cover" />
-        </div>
+        {loginImage ? (
+          <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
+            <img src={loginImage} alt="Modern developer workspace" className="h-52 w-full object-cover" />
+          </div>
+        ) : null}
       </Card>
 
       <Card className="rounded-[32px] p-6 sm:rounded-[36px] sm:p-10">
@@ -102,8 +104,8 @@ export default function Login() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <Button className="w-full" size="lg" onClick={handleLogin} disabled={isSubmitting}>
-            {isSubmitting ? "Logging in..." : "Login"}
+          <Button className="w-full" size="lg" onClick={handleLogin} isLoading={isSubmitting}>
+            Login
           </Button>
 
           <div className="relative py-1 text-center text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -111,24 +113,26 @@ export default function Login() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              className="flex items-center justify-center gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"
+            <Button
+              variant="secondary"
+              className="w-full"
               onClick={() => void handleFirebaseLogin("google")}
+              isLoading={socialLoading === "google"}
               disabled={Boolean(socialLoading)}
             >
               <FcGoogle className="text-lg" />
-              {socialLoading === "google" ? "Connecting..." : "Google"}
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"
+              Google
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full"
               onClick={() => void handleFirebaseLogin("github")}
+              isLoading={socialLoading === "github"}
               disabled={Boolean(socialLoading)}
             >
               <FiGithub className="text-lg" />
-              {socialLoading === "github" ? "Connecting..." : "GitHub"}
-            </button>
+              GitHub
+            </Button>
           </div>
 
           <p className="text-center text-sm text-[var(--muted)]">

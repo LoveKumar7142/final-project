@@ -1,10 +1,13 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FiDownload, FiFolder, FiImage, FiMessageSquare, FiShoppingBag, FiTrash2, FiUploadCloud } from "react-icons/fi";
+import { FiDownload, FiFolder, FiMessageSquare, FiShoppingBag, FiTrash2, FiUploadCloud } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import PageLoader from "../components/ui/PageLoader";
 import { useAuth } from "../context/AuthContext";
 import { projects as localProjects } from "../data/projects";
 import api, {
@@ -21,6 +24,7 @@ import api, {
   uploadProjectArchive,
   uploadProjectImage,
   uploadSiteAsset,
+  deleteSiteAsset,
   type AdminContentPayload,
   type SiteAsset,
   type SiteSetting,
@@ -44,6 +48,7 @@ type ProjectFormState = {
   image_url: string;
   file: string;
   file_name: string;
+  sort_order: number;
   is_featured: boolean;
   is_paid: boolean;
 };
@@ -62,6 +67,7 @@ const defaultProjectForm: ProjectFormState = {
   image_url: "",
   file: "",
   file_name: "",
+  sort_order: 0,
   is_featured: false,
   is_paid: false,
 };
@@ -203,6 +209,7 @@ export default function Dashboard() {
         image_url: projectForm.image_url.trim(),
         file: projectForm.file.trim(),
         file_name: projectForm.file_name.trim(),
+        sort_order: Number(projectForm.sort_order || 0),
         is_featured: projectForm.is_featured,
         is_paid: projectForm.is_paid,
       };
@@ -234,8 +241,9 @@ export default function Dashboard() {
       setImageFile(null);
       setArchiveFile(null);
     },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Project save nahi ho paya");
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || (error instanceof Error ? error.message : "Project save nahi ho paya");
+      toast.error(msg);
     },
   });
 
@@ -246,7 +254,7 @@ export default function Dashboard() {
         queryClient.invalidateQueries({ queryKey: ["admin-projects"] }),
         queryClient.invalidateQueries({ queryKey: ["admin-summary"] }),
       ]);
-      toast.success("Project delete ho gaya");
+      toast.success("Project deleted successfully");
     },
   });
 
@@ -269,10 +277,11 @@ export default function Dashboard() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-content"] });
       await queryClient.invalidateQueries({ queryKey: ["site-assets"] });
-      toast.success("Content update ho gaya");
+      toast.success("Content updated successfully");
     },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Content save nahi hua");
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || (error instanceof Error ? error.message : "Content save nahi hua");
+      toast.error(msg);
     },
   });
 
@@ -281,10 +290,24 @@ export default function Dashboard() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-content"] });
       await queryClient.invalidateQueries({ queryKey: ["site-assets"] });
-      toast.success("Site image upload ho gayi");
+      toast.success("Site image uploaded successfully");
     },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Image upload nahi hui");
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || (error instanceof Error ? error.message : "Image upload nahi hui");
+      toast.error(msg);
+    },
+  });
+
+  const deleteSiteAssetMutation = useMutation({
+    mutationFn: deleteSiteAsset,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-content"] });
+      await queryClient.invalidateQueries({ queryKey: ["site-assets"] });
+      toast.success("Image permanently deleted from server");
+    },
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || (error instanceof Error ? error.message : "Image deletion failed");
+      toast.error(msg);
     },
   });
 
@@ -293,7 +316,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
       queryClient.invalidateQueries({ queryKey: ["admin-summary"] }),
     ]);
-    toast.success("Order delete ho gaya");
+    toast.success("Order deleted successfully");
   }});
 
   const deleteMessageMutation = useMutation({ mutationFn: deleteAdminMessage, onSuccess: async () => {
@@ -301,7 +324,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["admin-messages"] }),
       queryClient.invalidateQueries({ queryKey: ["admin-summary"] }),
     ]);
-    toast.success("Message delete ho gaya");
+    toast.success("Message deleted successfully");
   }});
 
   const startEditingProject = (project: Project) => {
@@ -320,6 +343,7 @@ export default function Dashboard() {
       image_url: project.image_url || project.hero_image || "",
       file: project.file || "",
       file_name: project.file_name || "",
+      sort_order: Number(project.sort_order || 0),
       is_featured: Boolean(project.is_featured),
       is_paid: Boolean(project.is_paid),
     });
@@ -335,7 +359,12 @@ export default function Dashboard() {
   if (!isAdmin) {
     return (
       <div className="space-y-8">
-        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <motion.section 
+          className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
           <Card className="rounded-[36px] p-7">
             <p className="text-sm uppercase tracking-[0.24em] text-[var(--muted)]">Dashboard overview</p>
             <h1 className="section-title mt-3">Welcome back, {user?.name?.split(" ")[0] || "builder"}.</h1>
@@ -354,14 +383,19 @@ export default function Dashboard() {
               </Card>
             ))}
           </div>
-        </section>
+        </motion.section>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-4 xl:grid-cols-4">
+      <motion.section 
+        className="grid gap-4 xl:grid-cols-4"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         {[
           { label: "Projects", value: summary?.totals.projects ?? 0, icon: FiFolder },
           { label: "Orders", value: summary?.totals.orders ?? 0, icon: FiShoppingBag },
@@ -374,9 +408,14 @@ export default function Dashboard() {
             <p className="mt-1 text-sm text-[var(--muted)]">{item.label}</p>
           </Card>
         ))}
-      </section>
+      </motion.section>
 
-      <Card className="rounded-[36px] p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+      >
+        <Card className="rounded-[36px] p-4 sm:p-6">
         <div className="flex flex-wrap gap-3">
           {[
             ["projects", "Projects"],
@@ -396,9 +435,15 @@ export default function Dashboard() {
           ))}
         </div>
       </Card>
+      </motion.div>
 
       {activeTab === "projects" ? (
-        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <motion.section 
+          className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
           <Card className="rounded-[36px] p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -420,7 +465,8 @@ export default function Dashboard() {
                 <textarea className="min-h-28 w-full rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 outline-none" placeholder="Tech stack, one per line" value={projectForm.techText} onChange={(e) => setProjectForm((current) => ({ ...current, techText: e.target.value }))} />
                 <textarea className="min-h-28 w-full rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 outline-none" placeholder="Features or gallery items, one per line" value={projectForm.galleryText} onChange={(e) => setProjectForm((current) => ({ ...current, galleryText: e.target.value }))} />
               </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <Input type="number" placeholder="Sort Order (0=Top)" value={projectForm.sort_order} onChange={(e) => setProjectForm((current) => ({ ...current, sort_order: Number(e.target.value) }))} />
                 <Input type="number" placeholder="Price" value={projectForm.price} onChange={(e) => setProjectForm((current) => ({ ...current, price: e.target.value }))} />
                 <select value={projectForm.category} onChange={(e) => setProjectForm((current) => ({ ...current, category: e.target.value as ProjectCategory }))} className="rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 outline-none"><option value="Free">Free</option><option value="Paid">Paid</option></select>
                 <label className="flex items-center gap-3 rounded-3xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"><input type="checkbox" checked={projectForm.is_featured} onChange={(e) => setProjectForm((current) => ({ ...current, is_featured: e.target.checked }))} />Featured</label>
@@ -438,21 +484,23 @@ export default function Dashboard() {
                 <label className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--bg-soft)] px-4 py-4 text-sm text-[var(--muted)]"><span className="block font-medium text-[var(--text)]">Project image upload</span><span className="mt-1 block">Agar file choose karoge to save ke baad image upload ho jayegi.</span><input className="mt-3 block w-full" type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} /></label>
                 <label className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--bg-soft)] px-4 py-4 text-sm text-[var(--muted)]"><span className="block font-medium text-[var(--text)]">Project zip upload</span><span className="mt-1 block">Zip choose karoge to project file field automatic update ho jayegi.</span><input className="mt-3 block w-full" type="file" accept=".zip,.rar,.7z,application/zip" onChange={(e) => setArchiveFile(e.target.files?.[0] || null)} /></label>
               </div>
-              <button type="submit" className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--bg)]" disabled={saveProjectMutation.isPending}>{saveProjectMutation.isPending ? "Saving..." : editingProjectId ? "Update Project" : "Add Project"}</button>
+              <Button type="submit" isLoading={saveProjectMutation.isPending}>
+                {editingProjectId ? "Update Project" : "Add Project"}
+              </Button>
             </form>
           </Card>
 
           <Card className="rounded-[36px] p-6">
             <h2 className="text-2xl font-semibold">Existing Projects</h2>
             <div className="mt-5 space-y-3">
-              {projectsLoading ? <p className="text-sm text-[var(--muted)]">Loading projects...</p> : adminProjects.map((project) => (
+              {projectsLoading ? <PageLoader className="min-h-[200px]" message="Loading projects..." /> : adminProjects.map((project) => (
                 <div key={project.id} className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold">{project.title}</p>
                       <p className="mt-1 text-sm text-[var(--muted)]">{project.slug}</p>
                       <p className="mt-2 text-sm text-[var(--muted)]">{project.tagline}</p>
-                      <p className="mt-2 text-xs text-[var(--muted)]">Downloads: {project.download_count || 0} | {project.category || "Paid"}</p>
+                      <p className="mt-2 text-xs text-[var(--muted)]">Downloads: {project.download_count || 0} | {project.category || "Paid"} | Pos: {project.sort_order || 0}</p>
                     </div>
                     <div className="flex gap-2">
                       <button type="button" className="rounded-full border border-[var(--border)] px-3 py-2 text-xs" onClick={() => startEditingProject(project)}>Edit</button>
@@ -463,17 +511,24 @@ export default function Dashboard() {
               ))}
             </div>
           </Card>
-        </section>
+        </motion.section>
       ) : null}
 
       {activeTab === "images" ? (
-        <Card className="rounded-[36px] p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <Card className="rounded-[36px] p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold">Site Image Manager</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">Yahan se Home, About, Contact, Hire, Login, Register waali site images ko URL se ya direct upload se manage kar sakte ho.</p>
             </div>
-            <button type="button" className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--bg)]" onClick={() => saveContentMutation.mutate()} disabled={saveContentMutation.isPending}>{saveContentMutation.isPending ? "Saving..." : "Save Image URLs"}</button>
+            <Button type="button" onClick={() => saveContentMutation.mutate()} isLoading={saveContentMutation.isPending}>
+              Save Image URLs
+            </Button>
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -484,7 +539,22 @@ export default function Dashboard() {
                     <p className="font-semibold">{asset.label || asset.asset_key}</p>
                     <p className="mt-1 text-xs text-[var(--muted)]">Key: {asset.asset_key}</p>
                   </div>
-                  <FiImage className="text-lg text-[var(--muted)]" />
+                  <div className="flex items-center gap-2">
+                    {asset.asset_url ? (
+                      <>
+                        <a href={asset.asset_url} target="_blank" rel="noreferrer" download className="rounded-full px-3 py-2 text-xs border border-[var(--border)] bg-[var(--bg-soft)] text-[var(--text)] hover:text-blue-500 hover:border-blue-300 transition-colors" title="Download Image">
+                          Download
+                        </a>
+                        <button type="button" onClick={() => {
+                          if (window.confirm("Permanently delete this image from the server?")) {
+                            deleteSiteAssetMutation.mutate(asset.asset_key);
+                          }
+                        }} className="rounded-full px-3 py-2 text-xs border border-[var(--border)] bg-red-50 text-red-500 hover:bg-red-100 transition-colors" disabled={deleteSiteAssetMutation.isPending} title="Delete Image from server">
+                          {deleteSiteAssetMutation.isPending ? "..." : "Delete"}
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
                 {asset.asset_url ? <img src={asset.asset_url} alt={asset.label || asset.asset_key} className="mt-4 h-36 w-full rounded-[20px] object-cover" /> : <div className="mt-4 flex h-36 items-center justify-center rounded-[20px] border border-dashed border-[var(--border)] text-sm text-[var(--muted)]">No image yet</div>}
                 <Input className="mt-4" placeholder="Image URL" value={asset.asset_url || ""} onChange={(e) => {
@@ -493,7 +563,7 @@ export default function Dashboard() {
                 }} />
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <input type="file" accept="image/*" onChange={(e) => setAssetFiles((current) => ({ ...current, [asset.asset_key]: e.target.files?.[0] || null }))} className="block w-full text-sm" />
-                  <button type="button" className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm" onClick={() => { const file = assetFiles[asset.asset_key]; if (!file) { toast.error("Pehle image file choose karo"); return; } uploadSiteAssetMutation.mutate({ assetKey: asset.asset_key, file }); }} disabled={uploadSiteAssetMutation.isPending}><FiUploadCloud /> Upload</button>
+                  <button type="button" className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm" onClick={() => { const file = assetFiles[asset.asset_key]; if (!file) { toast.error("Please choose an image file first"); return; } uploadSiteAssetMutation.mutate({ assetKey: asset.asset_key, file }); }} disabled={uploadSiteAssetMutation.isPending}><FiUploadCloud /> Upload</button>
                 </div>
               </div>
             ))}
@@ -550,16 +620,24 @@ export default function Dashboard() {
             </label>
           </div>
         </Card>
+        </motion.div>
       ) : null}
 
       {activeTab === "content" ? (
-        <Card className="rounded-[36px] p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <Card className="rounded-[36px] p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold">Content Control Center</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">Yahan JSON me sari editable site content rahegi. Isse aap sections add, remove, reorder, ya update kar sakte ho bina code khole.</p>
             </div>
-            <button type="button" className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--bg)]" onClick={() => saveContentMutation.mutate()} disabled={saveContentMutation.isPending}>{saveContentMutation.isPending ? "Saving..." : "Save Content"}</button>
+            <Button type="button" onClick={() => saveContentMutation.mutate()} isLoading={saveContentMutation.isPending}>
+              Save Content
+            </Button>
           </div>
 
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
@@ -580,11 +658,12 @@ export default function Dashboard() {
             ))}
           </div>
         </Card>
+        </motion.div>
       ) : null}
 
-      {activeTab === "orders" ? <Card className="rounded-[36px] p-6"><h2 className="text-2xl font-semibold">Orders</h2><div className="mt-5 space-y-3">{adminOrders.length ? adminOrders.map((order) => (<div key={order.id} className="flex items-start justify-between gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4"><div><p className="font-semibold">{order.name} • {order.project_type}</p><p className="mt-1 text-sm text-[var(--muted)]">{order.email}</p><p className="mt-2 text-sm text-[var(--muted)]">{order.description}</p></div><button type="button" className="rounded-full border border-red-300 p-2 text-red-500" onClick={() => deleteOrderMutation.mutate(order.id)}><FiTrash2 /></button></div>)) : <p className="text-sm text-[var(--muted)]">Abhi koi order nahi hai.</p>}</div></Card> : null}
+      {activeTab === "orders" ? <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}><Card className="rounded-[36px] p-6"><h2 className="text-2xl font-semibold">Orders</h2><div className="mt-5 space-y-3">{adminOrders.length ? adminOrders.map((order) => (<div key={order.id} className="flex items-start justify-between gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4"><div><p className="font-semibold">{order.name} • {order.project_type}</p><p className="mt-1 text-sm text-[var(--muted)]">{order.email}</p><p className="mt-2 text-sm text-[var(--muted)]">{order.description}</p></div><button type="button" className="rounded-full border border-red-300 p-2 text-red-500" onClick={() => deleteOrderMutation.mutate(order.id)}><FiTrash2 /></button></div>)) : <p className="text-sm text-[var(--muted)]">Abhi koi order nahi hai.</p>}</div></Card></motion.div> : null}
 
-      {activeTab === "messages" ? <Card className="rounded-[36px] p-6"><h2 className="text-2xl font-semibold">Messages</h2><div className="mt-5 space-y-3">{adminMessages.length ? adminMessages.map((message) => (<div key={message.id} className="flex items-start justify-between gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4"><div><p className="font-semibold">{message.name} • {message.type}</p><p className="mt-1 text-sm text-[var(--muted)]">{message.email}</p><p className="mt-2 text-sm text-[var(--muted)]">{message.message}</p></div><button type="button" className="rounded-full border border-red-300 p-2 text-red-500" onClick={() => deleteMessageMutation.mutate(message.id)}><FiTrash2 /></button></div>)) : <p className="text-sm text-[var(--muted)]">Abhi koi message nahi hai.</p>}</div></Card> : null}
+      {activeTab === "messages" ? <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}><Card className="rounded-[36px] p-6"><h2 className="text-2xl font-semibold">Messages</h2><div className="mt-5 space-y-3">{adminMessages.length ? adminMessages.map((message) => (<div key={message.id} className="flex items-start justify-between gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4"><div><p className="font-semibold">{message.name} • {message.type}</p><p className="mt-1 text-sm text-[var(--muted)]">{message.email}</p><p className="mt-2 text-sm text-[var(--muted)]">{message.message}</p></div><button type="button" className="rounded-full border border-red-300 p-2 text-red-500" onClick={() => deleteMessageMutation.mutate(message.id)}><FiTrash2 /></button></div>)) : <p className="text-sm text-[var(--muted)]">Abhi koi message nahi hai.</p>}</div></Card></motion.div> : null}
     </div>
   );
 }

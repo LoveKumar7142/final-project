@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { FiMail, FiMessageSquare, FiUser } from "react-icons/fi";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -42,13 +42,15 @@ export default function Contact() {
         <p className="section-copy mt-4">
           Use this channel for direct communication, collaborations, product inquiries, or questions about the marketplace projects.
         </p>
-        <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
-          <img
-            src={primaryImage}
-            alt="Creative team collaboration workspace"
-            className="h-52 w-full object-cover"
-          />
-        </div>
+        {primaryImage ? (
+          <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
+            <img
+              src={primaryImage}
+              alt="Creative team collaboration workspace"
+              className="h-52 w-full object-cover"
+            />
+          </div>
+        ) : null}
         <div className="mt-8 grid gap-4">
           <div className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-4">
             <p className="font-semibold">Response style</p>
@@ -62,13 +64,15 @@ export default function Contact() {
       </Card>
 
       <Card className="rounded-[32px] p-6 sm:rounded-[36px] sm:p-9">
-        <div className="mt-6 mb-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
-          <img
-            src={secondaryImage}
-            alt="Contact and communication workspace"
-            className="h-52 w-full object-cover"
-          />
-        </div>
+        {secondaryImage ? (
+          <div className="mt-6 mb-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
+            <img
+              src={secondaryImage}
+              alt="Contact and communication workspace"
+              className="h-52 w-full object-cover"
+            />
+          </div>
+        ) : null}
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block">
             <span className="mb-2.5 block text-sm font-medium">Name</span>
@@ -102,12 +106,11 @@ export default function Contact() {
 
         <div className="mt-6 flex justify-end">
           <Button
-            size="sm"
             className="w-full whitespace-nowrap px-5 py-2.5 text-sm sm:w-auto"
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            isLoading={isSubmitting}
           >
-            {isSubmitting ? "Sending..." : "Send Message"}
+            Send Message
           </Button>
         </div>
       </Card>

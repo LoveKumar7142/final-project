@@ -1,4 +1,4 @@
-﻿import pool from "../config/db.js";
+import pool from "../config/db.js";
 import {
   assertValidProjectPayload,
   parseJsonArrayInput,
@@ -42,6 +42,7 @@ const mapProjectPayload = (payload) => {
     category: payload.category === "Free" ? "Free" : "Paid",
     is_featured: toBoolean(payload.is_featured),
     is_paid: toBoolean(payload.is_paid),
+    sort_order: Number(payload.sort_order) || 0,
   };
 
   assertValidProjectPayload(project);
@@ -80,8 +81,8 @@ export const addProject = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO projects
-      (slug, title, tagline, description, long_description, tech, gallery, price, file, file_name, file_public_id, demo_url, hero_image, hero_image_public_id, image_url, image_public_id, category, is_featured, is_paid)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (slug, title, tagline, description, long_description, tech, gallery, price, file, file_name, file_public_id, demo_url, hero_image, hero_image_public_id, image_url, image_public_id, category, is_featured, is_paid, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         project.slug,
         project.title,
@@ -102,6 +103,7 @@ export const addProject = async (req, res) => {
         project.category,
         project.is_featured,
         project.is_paid,
+        project.sort_order,
       ],
     );
 
@@ -121,7 +123,7 @@ export const addProject = async (req, res) => {
 
 export const getProjects = async (req, res) => {
   try {
-    const [projects] = await pool.query("SELECT * FROM projects ORDER BY id ASC");
+    const [projects] = await pool.query("SELECT * FROM projects ORDER BY sort_order ASC, id DESC");
     res.json(projects.map(normalizeProject));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -158,6 +160,16 @@ export const updateProject = async (req, res) => {
 
     const project = mapProjectPayload({ ...existingProject, ...req.body });
 
+    // 🚀 Auto-detect manual URL changes and detach Cloudinary public IDs so old files get hard-deleted
+    if (project.image_url !== existingProject.image_url) {
+      project.image_public_id = null;
+      project.hero_image_public_id = null;
+    }
+    
+    if (project.file !== existingProject.file) {
+      project.file_public_id = null;
+    }
+
     const [slugConflict] = await pool.query(
       "SELECT id FROM projects WHERE slug = ? AND id <> ? LIMIT 1",
       [project.slug, id],
@@ -169,7 +181,7 @@ export const updateProject = async (req, res) => {
 
     await pool.query(
       `UPDATE projects
-       SET slug = ?, title = ?, tagline = ?, description = ?, long_description = ?, tech = ?, gallery = ?, price = ?, file = ?, file_name = ?, file_public_id = ?, demo_url = ?, hero_image = ?, hero_image_public_id = ?, image_url = ?, image_public_id = ?, category = ?, is_featured = ?, is_paid = ?
+       SET slug = ?, title = ?, tagline = ?, description = ?, long_description = ?, tech = ?, gallery = ?, price = ?, file = ?, file_name = ?, file_public_id = ?, demo_url = ?, hero_image = ?, hero_image_public_id = ?, image_url = ?, image_public_id = ?, category = ?, is_featured = ?, is_paid = ?, sort_order = ?
        WHERE id = ?`,
       [
         project.slug,
@@ -191,6 +203,7 @@ export const updateProject = async (req, res) => {
         project.category,
         project.is_featured,
         project.is_paid,
+        project.sort_order,
         id,
       ],
     );

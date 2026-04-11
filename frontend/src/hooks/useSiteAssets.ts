@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { fetchSiteAssets, type SiteAsset } from "../api/axios";
 
 export const getSiteAssetUrl = (
@@ -6,8 +6,13 @@ export const getSiteAssetUrl = (
   key: string,
   fallback: string,
 ) => {
+  if (!assets) return fallback;
   const normalizedAssets = Array.isArray(assets) ? assets : [];
-  return normalizedAssets.find((item) => item.asset_key === key)?.asset_url || fallback;
+  const found = normalizedAssets.find((item) => item.asset_key === key);
+  if (found) {
+    return found.asset_url || "";
+  }
+  return fallback;
 };
 
 export function useSiteAssets() {

@@ -1,4 +1,4 @@
-﻿import multer from "multer";
+import multer from "multer";
 
 const storage = multer.memoryStorage();
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -65,9 +65,31 @@ export const uploadArchive = createUploader({
   },
 });
 
+const allowedGenericMimeTypes = new Set([
+  ...allowedImageMimeTypes,
+  ...allowedArchiveMimeTypes,
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "text/csv",
+]);
+
 const uploadAny = createUploader({
   maxSize: MAX_GENERIC_SIZE,
-  fileFilter: () => {},
+  fileFilter: (file) => {
+    const lowerName = String(file.originalname || "").toLowerCase();
+    const looksLikeArchive = [".zip", ".rar", ".7z"].some((ext) => lowerName.endsWith(ext));
+    const looksLikeDoc = [".pdf", ".doc", ".docx", ".txt", ".csv"].some((ext) => lowerName.endsWith(ext));
+    
+    if (
+      !looksLikeArchive &&
+      !looksLikeDoc &&
+      !allowedGenericMimeTypes.has(file.mimetype)
+    ) {
+      throw createUploadError("Only Images, Archives, PDFs, and Documents are allowed");
+    }
+  },
 });
 
 export default uploadAny;

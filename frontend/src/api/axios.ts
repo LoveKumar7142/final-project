@@ -1,14 +1,35 @@
-﻿import axios from "axios";
+import axios from "axios";
 import type { Project } from "../types/contentModels";
 
 const AUTH_STORAGE_KEY = "portfolio_auth";
-const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-const fallbackApiBaseUrl =
-  typeof window !== "undefined" ? window.location.origin : "http://localhost:5000";
+
+const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, "");
+
+const resolveApiBaseUrl = () => {
+  const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+
+  if (configuredApiBaseUrl) {
+    return normalizeBaseUrl(configuredApiBaseUrl);
+  }
+
+  if (typeof window === "undefined") {
+    return "http://localhost:5000";
+  }
+
+  const { hostname, origin } = window.location;
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "http://localhost:5000";
+  }
+
+  return normalizeBaseUrl(origin);
+};
 
 const api = axios.create({
-  baseURL: configuredApiBaseUrl || fallbackApiBaseUrl,
+  baseURL: resolveApiBaseUrl(),
 });
+
+import toast from "react-hot-toast";
 
 api.interceptors.request.use((config) => {
   let token = localStorage.getItem("token");
@@ -29,6 +50,26 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+// Global response error interceptor intercept errors globally.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // We don't want to toast for basic 401s if they are part of standard app flow (like initial check)
+    // But we want to toast 500s or unexpected errors globally.
+    if (error.response) {
+      const status = error.response.status;
+      if (status >= 500) {
+        toast.error(`Server Error: ${error.response.data?.message || "Something went wrong on the server."}`);
+      } else if (status === 404 && !error.config.url?.includes("/api/auth/me")) {
+        // Prevent showing 404 on initial auth check as it's normal when unauthenticated or new
+      }
+    } else if (error.request) {
+      toast.error("Network error: Could not reach the server.");
+    }
+    return Promise.reject(error);
+  }
+);
 
 export type AdminSummary = {
   totals: {
@@ -175,6 +216,11 @@ export const uploadSiteAsset = async (assetKey: string, file: File) => {
       "Content-Type": "multipart/form-data",
     },
   });
+  return data;
+};
+
+export const deleteSiteAsset = async (assetKey: string) => {
+  const { data } = await api.delete<{ message: string }>(`/api/upload/site-assets/${assetKey}`);
   return data;
 };
 

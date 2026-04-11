@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Theme = "light" | "dark";
 
@@ -43,7 +43,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [hasManualOverride]);
 
   useEffect(() => {
+    document.documentElement.classList.add("theme-transition");
     document.documentElement.classList.toggle("dark", theme === "dark");
+    
+    const timeout = setTimeout(() => {
+      document.documentElement.classList.remove("theme-transition");
+    }, 750);
+    
+    return () => clearTimeout(timeout);
   }, [theme]);
 
   const value = useMemo(

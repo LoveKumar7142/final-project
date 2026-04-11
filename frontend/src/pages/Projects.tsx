@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+import { motion } from "framer-motion";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FiFilter, FiSearch } from "react-icons/fi";
 import ProjectCard from "../components/ProjectCard";
@@ -37,7 +38,11 @@ export default function Projects() {
 
   return (
     <div className="space-y-8 sm:space-y-10">
-      <section className="section-shell">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="section-shell">
         <p className="eyebrow">Projects marketplace</p>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -50,7 +55,7 @@ export default function Projects() {
             {filteredProjects.length} projects found
           </div>
         </div>
-      </section>
+      </motion.section>
 
       <Card className="rounded-[32px] p-4 sm:p-6">
         <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr_1fr]">
@@ -91,7 +96,11 @@ export default function Projects() {
         </div>
       </Card>
 
-      <section className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
         {isLoading
           ? Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="panel animate-pulse rounded-[30px] p-5">
@@ -102,7 +111,7 @@ export default function Projects() {
               </div>
             ))
           : filteredProjects.map((project) => <ProjectCard key={project.id} project={project} />)}
-      </section>
+      </motion.section>
     </div>
   );
 }

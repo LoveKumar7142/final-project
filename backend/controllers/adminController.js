@@ -1,4 +1,4 @@
-﻿import pool from "../config/db.js";
+import pool from "../config/db.js";
 
 const toText = (value) => {
   if (value === undefined || value === null) return null;
@@ -66,19 +66,20 @@ const readContentBundle = async () => {
 
 export const getAdminSummary = async (req, res) => {
   try {
-    const [[projectCount], [orderCount], [messageCount], [featuredCount]] = await Promise.all([
-      pool.query("SELECT COUNT(*) AS total FROM projects"),
-      pool.query("SELECT COUNT(*) AS total FROM orders"),
-      pool.query("SELECT COUNT(*) AS total FROM messages"),
-      pool.query("SELECT COUNT(*) AS total FROM projects WHERE is_featured = TRUE"),
-    ]);
+    const [rows] = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM projects) as projects,
+        (SELECT COUNT(*) FROM orders) as orders,
+        (SELECT COUNT(*) FROM messages) as messages,
+        (SELECT COUNT(*) FROM projects WHERE is_featured = TRUE) as featuredProjects
+    `);
 
     res.json({
       totals: {
-        projects: projectCount[0]?.total || 0,
-        orders: orderCount[0]?.total || 0,
-        messages: messageCount[0]?.total || 0,
-        featuredProjects: featuredCount[0]?.total || 0,
+        projects: rows[0]?.projects || 0,
+        orders: rows[0]?.orders || 0,
+        messages: rows[0]?.messages || 0,
+        featuredProjects: rows[0]?.featuredProjects || 0,
       },
     });
   } catch (error) {
@@ -134,9 +135,10 @@ export const getAdminContent = async (req, res) => {
 };
 
 export const saveAdminContent = async (req, res) => {
-  const connection = await pool.getConnection();
+  let connection;
 
   try {
+    connection = await pool.getConnection();
     const existingContent = await readContentBundle();
     const profile = req.body.profile || {};
     const siteSettings = normalizeArray(req.body.siteSettings);
@@ -153,8 +155,8 @@ export const saveAdminContent = async (req, res) => {
     if (existingContent.profile?.id) {
       await connection.query(
         `UPDATE portfolio_profile
-         SET full_name = ?, headline = ?, subheadline = ?, hero_title = ?, hero_description = ?, hero_image = ?, hero_image_public_id = ?, about_intro = ?, current_company = ?, current_role = ?, current_summary = ?, location = ?, email = ?, phone = ?
-         WHERE id = ?`,
+         SET \`full_name\` = ?, \`headline\` = ?, \`subheadline\` = ?, \`hero_title\` = ?, \`hero_description\` = ?, \`hero_image\` = ?, \`hero_image_public_id\` = ?, \`about_intro\` = ?, \`current_company\` = ?, \`current_role\` = ?, \`current_summary\` = ?, \`location\` = ?, \`email\` = ?, \`phone\` = ?
+         WHERE \`id\` = ?`,
         [
           toText(profile.full_name) || existingContent.profile.full_name,
           toText(profile.headline),
@@ -178,7 +180,7 @@ export const saveAdminContent = async (req, res) => {
     } else {
       await connection.query(
         `INSERT INTO portfolio_profile
-         (full_name, headline, subheadline, hero_title, hero_description, hero_image, hero_image_public_id, about_intro, current_company, current_role, current_summary, location, email, phone)
+         (\`full_name\`, \`headline\`, \`subheadline\`, \`hero_title\`, \`hero_description\`, \`hero_image\`, \`hero_image_public_id\`, \`about_intro\`, \`current_company\`, \`current_role\`, \`current_summary\`, \`location\`, \`email\`, \`phone\`)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           toText(profile.full_name) || "Love Kumar",
@@ -200,110 +202,119 @@ export const saveAdminContent = async (req, res) => {
     }
 
     await connection.query("DELETE FROM site_settings");
-    for (let index = 0; index < siteSettings.length; index += 1) {
-      const item = siteSettings[index];
-      await connection.query(
-        "INSERT INTO site_settings (setting_key, label, setting_value, setting_group, sort_order) VALUES (?, ?, ?, ?, ?)",
-        [
-          toText(item.setting_key),
-          toText(item.label) || toText(item.setting_key),
+    if (siteSettings.length > 0) {
+      const siteSettingsVals = [];
+      const siteSettingsPh = siteSettings.map((item, index) => {
+        siteSettingsVals.push(
+          toText(item.setting_key) || `setting_${index}`,
+          toText(item.label) || toText(item.setting_key) || `Setting ${index}`,
           toText(item.setting_value),
           toText(item.setting_group) || "general",
-          toNumber(item.sort_order, index + 1),
-        ],
-      );
+          toNumber(item.sort_order, index + 1)
+        );
+        return "(?, ?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO site_settings (setting_key, label, setting_value, setting_group, sort_order) VALUES ${siteSettingsPh}`, siteSettingsVals);
     }
 
     await connection.query("DELETE FROM site_assets");
-    for (let index = 0; index < siteAssets.length; index += 1) {
-      const item = siteAssets[index];
-      await connection.query(
-        "INSERT INTO site_assets (asset_key, label, asset_url, asset_public_id, sort_order) VALUES (?, ?, ?, ?, ?)",
-        [
-          toText(item.asset_key),
-          toText(item.label) || toText(item.asset_key),
+    if (siteAssets.length > 0) {
+      const siteAssetsVals = [];
+      const siteAssetsPh = siteAssets.map((item, index) => {
+        siteAssetsVals.push(
+          toText(item.asset_key) || `asset_${index}`,
+          toText(item.label) || toText(item.asset_key) || `Asset ${index}`,
           toText(item.asset_url),
           toText(item.asset_public_id),
-          toNumber(item.sort_order, index + 1),
-        ],
-      );
+          toNumber(item.sort_order, index + 1)
+        );
+        return "(?, ?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO site_assets (asset_key, label, asset_url, asset_public_id, sort_order) VALUES ${siteAssetsPh}`, siteAssetsVals);
     }
 
     await connection.query("DELETE FROM social_links");
-    for (let index = 0; index < socialLinks.length; index += 1) {
-      const item = socialLinks[index];
-      await connection.query(
-        "INSERT INTO social_links (label, url, icon, sort_order) VALUES (?, ?, ?, ?)",
-        [toText(item.label), toText(item.url), toText(item.icon), toNumber(item.sort_order, index + 1)],
-      );
+    if (socialLinks.length > 0) {
+      const socialLinksVals = [];
+      const socialLinksPh = socialLinks.map((item, index) => {
+        socialLinksVals.push(toText(item.label) || "Link", toText(item.url) || "#", toText(item.icon), toNumber(item.sort_order, index + 1));
+        return "(?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO social_links (label, url, icon, sort_order) VALUES ${socialLinksPh}`, socialLinksVals);
     }
 
     await connection.query("DELETE FROM home_stats");
-    for (let index = 0; index < homeStats.length; index += 1) {
-      const item = homeStats[index];
-      await connection.query(
-        "INSERT INTO home_stats (label, value, sort_order) VALUES (?, ?, ?)",
-        [toText(item.label), toText(item.value), toNumber(item.sort_order, index + 1)],
-      );
+    if (homeStats.length > 0) {
+      const homeStatsVals = [];
+      const homeStatsPh = homeStats.map((item, index) => {
+        homeStatsVals.push(toText(item.label) || "Stat", toText(item.value) || "0", toNumber(item.sort_order, index + 1));
+        return "(?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO home_stats (label, value, sort_order) VALUES ${homeStatsPh}`, homeStatsVals);
     }
 
     await connection.query("DELETE FROM home_capabilities");
-    for (let index = 0; index < capabilities.length; index += 1) {
-      const item = capabilities[index];
-      await connection.query(
-        "INSERT INTO home_capabilities (title, description, icon, sort_order) VALUES (?, ?, ?, ?)",
-        [toText(item.title), toText(item.description), toText(item.icon), toNumber(item.sort_order, index + 1)],
-      );
+    if (capabilities.length > 0) {
+      const capabilitiesVals = [];
+      const capabilitiesPh = capabilities.map((item, index) => {
+        capabilitiesVals.push(toText(item.title) || "Capability", toText(item.description), toText(item.icon), toNumber(item.sort_order, index + 1));
+        return "(?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO home_capabilities (title, description, icon, sort_order) VALUES ${capabilitiesPh}`, capabilitiesVals);
     }
 
     await connection.query("DELETE FROM service_offerings");
-    for (let index = 0; index < services.length; index += 1) {
-      const item = services[index];
-      await connection.query(
-        "INSERT INTO service_offerings (title, description, icon, badge, cta_text, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [
-          toText(item.title),
+    if (services.length > 0) {
+      const servicesVals = [];
+      const servicesPh = services.map((item, index) => {
+        servicesVals.push(
+          toText(item.title) || "Service",
           toText(item.description),
           toText(item.icon),
           toText(item.badge),
           toText(item.cta_text),
           toNumber(item.sort_order, index + 1),
-          toBoolean(item.is_active),
-        ],
-      );
+          toBoolean(item.is_active)
+        );
+        return "(?, ?, ?, ?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO service_offerings (title, description, icon, badge, cta_text, sort_order, is_active) VALUES ${servicesPh}`, servicesVals);
     }
 
     await connection.query("DELETE FROM about_sections");
-    for (let index = 0; index < aboutSections.length; index += 1) {
-      const item = aboutSections[index];
-      await connection.query(
-        "INSERT INTO about_sections (section_key, title, description, sort_order) VALUES (?, ?, ?, ?)",
-        [
-          toText(item.section_key),
-          toText(item.title),
+    if (aboutSections.length > 0) {
+      const aboutSectionsVals = [];
+      const aboutSectionsPh = aboutSections.map((item, index) => {
+        aboutSectionsVals.push(
+          toText(item.section_key) || `section_${index}`,
+          toText(item.title) || "Section Title",
           toText(item.description),
-          toNumber(item.sort_order, index + 1),
-        ],
-      );
+          toNumber(item.sort_order, index + 1)
+        );
+        return "(?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO about_sections (section_key, title, description, sort_order) VALUES ${aboutSectionsPh}`, aboutSectionsVals);
     }
 
     await connection.query("DELETE FROM about_items");
-    for (let index = 0; index < aboutItems.length; index += 1) {
-      const item = aboutItems[index];
-      await connection.query(
-        "INSERT INTO about_items (section_key, title, description, meta_value, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
-        [
-          toText(item.section_key),
+    if (aboutItems.length > 0) {
+      const aboutItemsVals = [];
+      const aboutItemsPh = aboutItems.map((item, index) => {
+        aboutItemsVals.push(
+          toText(item.section_key) || "default_section",
           toText(item.title),
           toText(item.description),
           toText(item.meta_value),
           toText(item.icon),
-          toNumber(item.sort_order, index + 1),
-        ],
-      );
+          toNumber(item.sort_order, index + 1)
+        );
+        return "(?, ?, ?, ?, ?, ?)";
+      }).join(",");
+      await connection.query(`INSERT INTO about_items (section_key, title, description, meta_value, icon, sort_order) VALUES ${aboutItemsPh}`, aboutItemsVals);
     }
 
     await connection.commit();
+    connection.release(); // 🔥 Critical: Free connection before heavy read
 
     const updatedContent = await readContentBundle();
     res.json({
@@ -311,9 +322,15 @@ export const saveAdminContent = async (req, res) => {
       content: updatedContent,
     });
   } catch (error) {
-    await connection.rollback();
+    console.error("ADMIN UDPATE ERROR:", error);
+    import("fs").then(fs => fs.writeFileSync("admin_error.log", error.stack || error.message)).catch(() => {});
+    if (connection) {
+      try { await connection.rollback(); } catch(e) {}
+    }
     res.status(500).json({ message: error.message });
   } finally {
-    connection.release();
+    if (connection) {
+      try { connection.release(); } catch(e) {}
+    }
   }
 };

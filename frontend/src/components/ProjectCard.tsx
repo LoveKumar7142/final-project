@@ -1,25 +1,26 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { FiArrowUpRight } from "react-icons/fi";
 import Card from "./ui/Card";
 import type { Project } from "../types/contentModels";
-import { getProjectFallbackImage } from "../lib/editorialImages";
+
 import { formatLocalPrice, getPricingMeta } from "../lib/pricing";
 import { useCurrency } from "../hooks/useCurrency";
 
 export default function ProjectCard({ project }: { project: Project }) {
   const { currency } = useCurrency();
-  const coverImage =
-    project.hero_image || getProjectFallbackImage(project.slug || project.id);
+  const coverImage = project.hero_image;
   const pricing = getPricingMeta(project);
 
   return (
     <Card className="group overflow-hidden rounded-[30px] p-0">
       <div className="relative h-52 overflow-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900">
-        <img
-          src={coverImage}
-          alt={project.title}
-          className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-        />
+        {coverImage ? (
+          <img
+            src={coverImage}
+            alt={project.title}
+            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : null}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_30%)]" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
         <div className="absolute left-5 top-5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">

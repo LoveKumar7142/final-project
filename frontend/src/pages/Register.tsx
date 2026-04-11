@@ -35,7 +35,7 @@ export default function Register() {
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password) {
-      toast.error("Saare fields fill karo");
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -43,7 +43,7 @@ export default function Register() {
       setIsSubmitting(true);
       await api.post("/api/auth/register", { name, email, password });
       setIsOtpStep(true);
-      toast.success("OTP email par bhej diya gaya hai");
+      toast.success("OTP has been sent to your email");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Registration failed");
     } finally {
@@ -53,7 +53,7 @@ export default function Register() {
 
   const handleVerifyOtp = async () => {
     if (!email.trim() || !otp.trim()) {
-      toast.error("Email aur OTP chahiye");
+      toast.error("Email and OTP are required");
       return;
     }
 
@@ -71,14 +71,14 @@ export default function Register() {
 
   const handleResendOtp = async () => {
     if (!name.trim() || !email.trim() || !password) {
-      toast.error("Name, email aur password dobara fill karo");
+      toast.error("Please fill out name, email and password again");
       return;
     }
 
     try {
       setIsSubmitting(true);
       await api.post("/api/auth/register/resend-otp", { name, email, password });
-      toast.success("Naya OTP bhej diya gaya");
+      toast.success("A new OTP has been sent");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "OTP resend nahi hua");
     } finally {
@@ -88,7 +88,7 @@ export default function Register() {
 
   const handleFirebaseRegister = async (provider: "google" | "github") => {
     if (!firebaseAuth || !isFirebaseConfigured) {
-      toast.error("Firebase config missing hai");
+      toast.error("Firebase configuration is missing");
       return;
     }
 
@@ -119,9 +119,11 @@ export default function Register() {
         <p className="section-copy mt-4">
           Registration ke baad email par OTP jayega, aur verify hone ke baad hi account active hoga. Ya aap Google aur GitHub se direct continue kar sakte ho.
         </p>
-        <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
-          <img src={registerImage} alt="Professional project planning workspace" className="h-52 w-full object-cover" />
-        </div>
+        {registerImage ? (
+          <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
+            <img src={registerImage} alt="Professional project planning workspace" className="h-52 w-full object-cover" />
+          </div>
+        ) : null}
       </Card>
 
       <Card className="rounded-[32px] p-6 sm:rounded-[36px] sm:p-10">
@@ -153,17 +155,17 @@ export default function Register() {
         <div className="mt-6 space-y-4">
           {isOtpStep ? (
             <>
-              <Button className="w-full" size="lg" onClick={handleVerifyOtp} disabled={isSubmitting}>
-                {isSubmitting ? "Verifying..." : "Verify OTP"}
+              <Button className="w-full" size="lg" onClick={handleVerifyOtp} isLoading={isSubmitting}>
+                Verify OTP
               </Button>
-              <button type="button" className="w-full rounded-[24px] border border-[var(--border)] px-4 py-3 text-sm" onClick={handleResendOtp} disabled={isSubmitting}>
-                {isSubmitting ? "Please wait..." : "Resend OTP"}
-              </button>
+              <Button variant="secondary" className="w-full" onClick={handleResendOtp} isLoading={isSubmitting}>
+                Resend OTP
+              </Button>
             </>
           ) : (
             <>
-              <Button className="w-full" size="lg" onClick={handleRegister} disabled={isSubmitting}>
-                {isSubmitting ? "Sending OTP..." : "Send OTP"}
+              <Button className="w-full" size="lg" onClick={handleRegister} isLoading={isSubmitting}>
+                Send OTP
               </Button>
 
               <div className="relative py-1 text-center text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -171,24 +173,26 @@ export default function Register() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className="flex items-center justify-center gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"
+                <Button
+                  variant="secondary"
+                  className="w-full"
                   onClick={() => void handleFirebaseRegister("google")}
+                  isLoading={socialLoading === "google"}
                   disabled={Boolean(socialLoading)}
                 >
                   <FcGoogle className="text-lg" />
-                  {socialLoading === "google" ? "Connecting..." : "Google"}
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center justify-center gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"
+                  Google
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full"
                   onClick={() => void handleFirebaseRegister("github")}
+                  isLoading={socialLoading === "github"}
                   disabled={Boolean(socialLoading)}
                 >
                   <FiGithub className="text-lg" />
-                  {socialLoading === "github" ? "Connecting..." : "GitHub"}
-                </button>
+                  GitHub
+                </Button>
               </div>
             </>
           )}

@@ -1,4 +1,4 @@
-﻿import { uploadBufferToCloudinary, destroyCloudinaryAsset, formatUploadResponse } from "../utils/cloudinaryAssets.js";
+import { uploadBufferToCloudinary, destroyCloudinaryAsset, formatUploadResponse } from "../utils/cloudinaryAssets.js";
 import pool from "../config/db.js";
 
 export const uploadProfileHeroImage = async (req, res) => {
@@ -202,6 +202,36 @@ export const uploadSiteAsset = async (req, res) => {
       upload: formatUploadResponse(result),
       asset: updatedAssets[0] || null,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteSiteAsset = async (req, res) => {
+  try {
+    const { assetKey } = req.params;
+    const normalizedKey = String(assetKey || "").trim().toLowerCase();
+
+    const [existingAssets] = await pool.query(
+      "SELECT * FROM site_assets WHERE asset_key = ? LIMIT 1",
+      [normalizedKey],
+    );
+
+    const currentAsset = existingAssets[0] || null;
+    if (!currentAsset) {
+      return res.status(404).json({ message: "Asset not found" });
+    }
+
+    if (currentAsset.asset_public_id) {
+      await destroyCloudinaryAsset(currentAsset.asset_public_id, "image");
+    }
+
+    await pool.query(
+      "UPDATE site_assets SET asset_url = NULL, asset_public_id = NULL WHERE asset_key = ?",
+      [normalizedKey],
+    );
+
+    res.json({ message: "Site image deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

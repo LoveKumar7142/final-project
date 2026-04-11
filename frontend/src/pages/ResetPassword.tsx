@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLock } from "react-icons/fi";
 import Button from "../components/ui/Button";
@@ -17,24 +17,24 @@ export default function ResetPassword() {
 
   const handleSubmit = async () => {
     if (!userId || !token) {
-      toast.error("Reset link invalid hai");
+      toast.error("Invalid reset link");
       return;
     }
 
     if (!password || password.length < 6) {
-      toast.error("Password kam se kam 6 characters ka hona chahiye");
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords match nahi kar rahe");
+      toast.error("Passwords do not match");
       return;
     }
 
     try {
       setIsSubmitting(true);
       await api.post("/api/auth/reset-password", { userId, token, password });
-      toast.success("Password reset ho gaya");
+      toast.success("Password reset successfully");
       navigate("/login");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Reset password failed");

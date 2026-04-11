@@ -1,4 +1,5 @@
-﻿import React from "react";
+import { motion } from "framer-motion";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -16,7 +17,7 @@ import toast from "react-hot-toast";
 import type { Project } from "../types/contentModels";
 import { formatLocalPrice, getPricingMeta } from "../lib/pricing";
 import { useCurrency } from "../hooks/useCurrency";
-import { getProjectFallbackImage } from "../lib/editorialImages";
+
 import { normalizeProject } from "../lib/projectPayload";
 
 declare global {
@@ -112,9 +113,7 @@ export default function ProjectDetail() {
   });
 
   const { currency } = useCurrency();
-  const heroImage =
-    project?.hero_image ||
-    getProjectFallbackImage(project?.slug || project?.id || "default");
+  const heroImage = project?.hero_image;
 
   if (isLoading) {
     return (
@@ -229,7 +228,11 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-8">
-      <section className="space-y-4">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="space-y-4">
         <Link to="/projects" className="text-sm text-[var(--muted)]">
           Projects / {project.title}
         </Link>
@@ -248,17 +251,23 @@ export default function ProjectDetail() {
             {pricing.isFree ? "Free access" : `${pricing.discountPercent}% OFF`}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}  className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
           <Card className="overflow-hidden rounded-[36px] p-0">
             <div className="relative min-h-[420px] bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900">
-              <img
-                src={heroImage}
-                alt={project.title}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
+              {heroImage ? (
+                <img
+                  src={heroImage}
+                  alt={project.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : null}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_30%)]" />
               <div className="absolute left-6 top-6 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                 {category}
@@ -387,7 +396,7 @@ export default function ProjectDetail() {
             </div>
           </div>
         </Card>
-      </section>
+      </motion.section>
 
       {agreementOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">

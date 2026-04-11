@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateToken } from "../utils/jwt.js";
 import { verifyFirebaseToken } from "../config/firebaseAdmin.js";
-import { sendOtpVerificationEmail } from "../utils/mailer.js";
+import { sendOtpVerificationEmail, sendPasswordResetEmail } from "../utils/mailer.js";
 
 const OTP_EXPIRY_MINUTES = 10;
 
@@ -308,11 +308,17 @@ export const forgotPassword = async (req, res) => {
 
     const resetToken = generatePasswordResetToken(user);
 
+    const clientOrigin = (process.env.CLIENT_ORIGIN || "").split(",")[0].trim() || "https://lovecode.icu";
+    const fullResetUrl = `${clientOrigin}/reset-password/${user.id}/${resetToken}`;
+
+    await sendPasswordResetEmail({
+      name: user.name,
+      email: user.email,
+      resetUrl: fullResetUrl,
+    });
+
     res.json({
-      message: "Password reset link generated successfully",
-      resetToken,
-      resetUrl: `/reset-password/${user.id}/${resetToken}`,
-      userId: user.id,
+      message: "Password reset link has been sent to your email successfully",
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

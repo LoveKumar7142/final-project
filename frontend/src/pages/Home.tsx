@@ -1,4 +1,4 @@
-﻿import { motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { FiArrowRight, FiBriefcase, FiMapPin, FiMic, FiMusic, FiStar } from "react-icons/fi";
@@ -108,7 +108,14 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <section id="about" className="grid items-start gap-6 xl:grid-cols-[1fr_1.02fr]">
+      <motion.section 
+        id="about" 
+        className="grid items-start gap-6 xl:grid-cols-[1fr_1.02fr]"
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">About</p>
           <h2 className="section-title mt-3">{profile?.subheadline || "Add profile subheadline from database"}</h2>
@@ -139,19 +146,27 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="w-full max-w-[240px] self-start overflow-hidden rounded-[26px] border border-[var(--border)] sm:ml-6 sm:w-[200px] sm:self-center lg:w-[220px]">
-                  <img
-                    src={capabilityImages[index % capabilityImages.length]}
-                    alt={item.title}
-                    className="h-32 w-full object-cover object-center sm:h-[126px] lg:h-[132px]"
-                  />
+                  {capabilityImages[index % capabilityImages.length] ? (
+                    <img
+                      src={capabilityImages[index % capabilityImages.length]}
+                      alt={item.title}
+                      className="h-32 w-full object-cover object-center sm:h-[126px] lg:h-[132px]"
+                    />
+                  ) : null}
                 </div>
               </div>
             </Card>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="section-shell">
+      <motion.section 
+        className="section-shell"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <div>
           <p className="eyebrow">Services</p>
           <h2 className="section-title">Production-style help you can actually hire me for.</h2>
@@ -172,11 +187,13 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="mt-5 overflow-hidden rounded-[24px] border border-[var(--border)]">
-                  <img
-                    src={serviceImages[index % serviceImages.length]}
-                    alt={service.title}
-                    className="h-36 w-full object-cover"
-                  />
+                  {serviceImages[index % serviceImages.length] ? (
+                    <img
+                      src={serviceImages[index % serviceImages.length]}
+                      alt={service.title}
+                      className="h-36 w-full object-cover"
+                    />
+                  ) : null}
                 </div>
                 {service.badge ? (
                   <p className="mt-4 inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -193,9 +210,15 @@ export default function Home() {
             </Card>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <motion.section 
+        className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut", staggerChildren: 0.1 }}
+      >
         <Card className="balanced-card rounded-[30px] p-6">
           <p className="eyebrow">Project Journey</p>
           <h3 className="mt-3 text-2xl font-semibold">Built with consistency</h3>
@@ -226,9 +249,15 @@ export default function Home() {
             </div>
           </div>
         </Card>
-      </section>
+      </motion.section>
 
-      <section className="grid items-start gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+      <motion.section 
+        className="grid items-start gap-6 xl:grid-cols-[1.04fr_0.96fr]"
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <Card className="balanced-card rounded-[36px] p-7 sm:p-8">
           <p className="eyebrow">Currently Working At</p>
           <h2 className="section-title mt-3">{data?.currentWork?.title || "Add current work title from database"}</h2>
@@ -253,9 +282,15 @@ export default function Home() {
             ))}
           </div>
         </Card>
-      </section>
+      </motion.section>
 
-      <section className="section-shell">
+      <motion.section 
+        className="section-shell"
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="eyebrow">Featured projects</p>
@@ -271,9 +306,14 @@ export default function Home() {
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section>
+      <motion.section
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: false, amount: 0.1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <Card className="rounded-[36px] p-8 sm:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
@@ -288,7 +328,7 @@ export default function Home() {
             </Button>
           </div>
         </Card>
-      </section>
+      </motion.section>
     </div>
   );
 }

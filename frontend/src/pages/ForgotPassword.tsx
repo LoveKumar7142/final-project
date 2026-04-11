@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FiMail } from "react-icons/fi";
 import Button from "../components/ui/Button";
@@ -8,20 +8,18 @@ import toast from "react-hot-toast";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [resetPath, setResetPath] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!email.trim()) {
-      toast.error("Email enter karo");
+      toast.error("Please enter your email");
       return;
     }
 
     try {
       setIsSubmitting(true);
       const { data } = await api.post("/api/auth/forgot-password", { email });
-      setResetPath(data.resetUrl);
-      toast.success("Reset link generate ho gaya");
+      toast.success(data.message || "Password reset link sent to your email");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Forgot password failed");
     } finally {
@@ -41,15 +39,7 @@ export default function ForgotPassword() {
           <input type="email" className="w-full rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] py-3 pl-11 pr-4 outline-none transition focus:border-transparent focus:ring-2 focus:ring-amber-400/70" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
 
-        {resetPath ? (
-          <div className="mt-5 rounded-[24px] border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm break-all">
-            <p className="font-semibold">Reset link</p>
-            <Link to={resetPath} className="mt-2 block text-emerald-700 underline dark:text-emerald-300">
-              {window.location.origin}
-              {resetPath}
-            </Link>
-          </div>
-        ) : null}
+        {/* Reset link UI removed for security, token is now sent directly to email */}
 
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/login" className="text-sm text-[var(--muted)] underline-offset-4 hover:underline">Back to login</Link>

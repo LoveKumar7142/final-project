@@ -1,4 +1,4 @@
-﻿export type SiteAsset = {
+export type SiteAsset = {
   id?: number;
   asset_key: string;
   label: string;
@@ -28,6 +28,7 @@ export type Project = {
   category?: "Free" | "Paid";
   is_featured?: boolean;
   is_paid?: boolean;
+  sort_order?: number;
   download_count?: number;
   created_at?: string;
   updated_at?: string;

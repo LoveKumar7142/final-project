@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import {
   FiBriefcase,
@@ -78,9 +78,11 @@ export default function Hire() {
           into execution.
         </p>
 
-        <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
-          <img src={primaryImage} alt="Professional client planning session" className="h-52 w-full object-cover" />
-        </div>
+        {primaryImage ? (
+          <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
+            <img src={primaryImage} alt="Professional client planning session" className="h-52 w-full object-cover" />
+          </div>
+        ) : null}
 
         <div className="mt-8 space-y-4">
           {[
@@ -99,9 +101,11 @@ export default function Hire() {
       </Card>
 
       <Card className="rounded-[32px] p-6 sm:rounded-[36px] sm:p-9">
-        <div className="mt-6 mb-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
-          <img src={secondaryImage} alt="Professional client planning session" className="h-52 w-full object-cover" />
-        </div>
+        {secondaryImage ? (
+          <div className="mt-6 mb-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
+            <img src={secondaryImage} alt="Professional client planning session" className="h-52 w-full object-cover" />
+          </div>
+        ) : null}
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block">
             <span className="mb-2.5 block text-sm font-medium">Name</span>

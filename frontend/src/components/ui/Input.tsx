@@ -1,4 +1,4 @@
-﻿import { cn } from "../../utils/cn";
+import { cn } from "../../utils/cn";
 
 export default function Input(
   props: React.InputHTMLAttributes<HTMLInputElement>,

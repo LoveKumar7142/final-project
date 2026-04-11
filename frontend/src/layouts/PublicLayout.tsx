@@ -1,4 +1,4 @@
-﻿import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Navbar from "../components/Navbar";
 import api from "../api/axios";
@@ -6,6 +6,7 @@ import type { AboutContentResponse } from "../types/contentModels";
 import { FiMail, FiMapPin, FiPhone, FiStar } from "react-icons/fi";
 import { getIconComponent } from "../lib/iconMap";
 import { useTheme } from "../context/ThemeContext";
+import GlobalProgress from "../components/GlobalProgress";
 
 export default function PublicLayout() {
   const { theme } = useTheme();
@@ -19,6 +20,7 @@ export default function PublicLayout() {
 
   return (
     <div className="relative min-h-screen pb-10">
+      <GlobalProgress />
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_45%)]" />
       <Navbar />
       <main className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-6 sm:gap-14 sm:px-6 sm:py-8 lg:px-8">

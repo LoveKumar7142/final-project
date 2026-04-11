@@ -1,4 +1,4 @@
-﻿const URL_PATTERN = /^(https?:\/\/|\/)[^\s]+$/i;
+const URL_PATTERN = /^[^\s]+$/i;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const toTrimmedString = (value, fallback = "") => {

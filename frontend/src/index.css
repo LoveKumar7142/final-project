@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --bg: #f4f1ea;
@@ -34,6 +34,8 @@
 
 html {
   scroll-behavior: smooth;
+  background-color: var(--bg);
+  transition: background-color 0.3s ease;
 }
 
 body {
@@ -187,4 +189,3 @@ select {
 .text-muted {
   color: var(--muted);
 }
-

@@ -290,3 +290,38 @@ export const sendOtpVerificationEmail = async ({
 
   return { skipped: false, recipient: email };
 };
+
+export const sendPasswordResetEmail = async ({
+  name,
+  email,
+  resetUrl,
+}) => {
+  const transporter = createTransporter();
+  const settings = await getSiteSettingsMap();
+  const from =
+    process.env.SMTP_FROM?.trim()
+    || settings.order_email_noreply?.trim()
+    || process.env.ORDER_EMAIL_NOREPLY?.trim();
+
+  if (!transporter || !from || !email || !resetUrl) {
+    return { skipped: true, reason: "Password reset email config is incomplete" };
+  }
+
+  await transporter.sendMail({
+    from,
+    to: email,
+    subject: "Reset your password",
+    text: [
+      `Hi ${name || "there"},`,
+      "",
+      "You recently requested to reset your password for your account.",
+      "Click the link below to reset it:",
+      "",
+      resetUrl,
+      "",
+      "If you did not request a password reset, please ignore this email.",
+    ].join("\n"),
+  });
+
+  return { skipped: false, recipient: email };
+};

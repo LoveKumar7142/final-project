@@ -1,18 +1,30 @@
-﻿import { cn } from "../../utils/cn";
+import { motion } from "framer-motion";
+import type { HTMLMotionProps } from "framer-motion";
+import { cn } from "../../utils/cn";
+import Loader from "./Loader";
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & HTMLMotionProps<"button"> & {
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
+  isLoading?: boolean;
 };
 
 export default function Button({
   variant = "primary",
   size = "md",
   className,
+  isLoading,
+  disabled,
+  children,
   ...props
 }: ButtonProps) {
   return (
-    <button
+    <motion.button
+      initial={{ opacity: 0, scale: 0.90 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: false, amount: 0.1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      disabled={isLoading || disabled}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60",
         size === "sm" && "px-4 py-2 text-sm",
@@ -26,7 +38,10 @@ export default function Button({
         className,
       )}
       {...props}
-    />
+    >
+      {isLoading && <Loader size="sm" className="opacity-70" />}
+      {children}
+    </motion.button>
   );
 }
 
