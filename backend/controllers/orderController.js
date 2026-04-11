@@ -1,10 +1,11 @@
 import pool from "../config/db.js";
-import razorpay from "../config/razorpay.js";
 import { sendAutoReplyEmail, sendOrderNotificationEmail } from "../utils/mailer.js";
+import { getRazorpay } from "../config/razorpay.js";
 
 // 🔹 Create Order (Hire Me)
 export const createHireOrder = async (req, res) => {
   try {
+    const razorpay = await getRazorpay();
     const { name, email, project_type, description, budget } = req.body;
 
     // 👉 60% advance

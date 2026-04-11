@@ -6,13 +6,14 @@ import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
 import api from "../api/axios";
 import type { Project } from "../types/contentModels";
+import { normalizeProjectList } from "../lib/projectPayload";
 
 export default function Projects() {
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
       const response = await api.get<Project[]>("/api/projects");
-      return response.data;
+      return normalizeProjectList(response.data);
     },
   });
 

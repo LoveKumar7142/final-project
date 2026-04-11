@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { FiEye, FiEyeOff, FiLock, FiMail, FiUser } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiGithub, FiLock, FiMail, FiUser } from "react-icons/fi";
+import { FcGoogle } from "react-icons/fc";
+import { getIdToken, signInWithPopup } from "firebase/auth";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import api from "../api/axios";
@@ -8,6 +10,12 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { editorialImages } from "../lib/editorialImages";
 import { getSiteAssetUrl, useSiteAssets } from "../hooks/useSiteAssets";
+import {
+  firebaseAuth,
+  githubProvider,
+  googleProvider,
+  isFirebaseConfigured,
+} from "../lib/firebase";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -17,6 +25,7 @@ export default function Register() {
   const [show, setShow] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtpStep, setIsOtpStep] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<"" | "google" | "github">("");
 
   const location = useLocation();
   const { isAuthenticated, login } = useAuth();
@@ -77,6 +86,29 @@ export default function Register() {
     }
   };
 
+  const handleFirebaseRegister = async (provider: "google" | "github") => {
+    if (!firebaseAuth || !isFirebaseConfigured) {
+      toast.error("Firebase config missing hai");
+      return;
+    }
+
+    try {
+      setSocialLoading(provider);
+      const result = await signInWithPopup(
+        firebaseAuth,
+        provider === "google" ? googleProvider : githubProvider,
+      );
+      const idToken = await getIdToken(result.user, true);
+      const res = await api.post("/api/auth/firebase", { idToken, provider });
+      login(res.data.token, res.data.user);
+      toast.success(`${provider === "google" ? "Google" : "GitHub"} account ready`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message || "Social signup failed");
+    } finally {
+      setSocialLoading("");
+    }
+  };
+
   if (isAuthenticated) return <Navigate to={redirect} replace />;
 
   return (
@@ -85,7 +117,7 @@ export default function Register() {
         <p className="text-sm uppercase tracking-[0.24em] text-[var(--muted)]">Register</p>
         <h1 className="section-title mt-3">Create an account to unlock purchases, downloads, and hiring flows.</h1>
         <p className="section-copy mt-4">
-          Registration ke baad email par OTP jayega, aur verify hone ke baad hi account active hoga.
+          Registration ke baad email par OTP jayega, aur verify hone ke baad hi account active hoga. Ya aap Google aur GitHub se direct continue kar sakte ho.
         </p>
         <div className="mt-6 overflow-hidden rounded-[28px] border border-[var(--border)]">
           <img src={registerImage} alt="Professional project planning workspace" className="h-52 w-full object-cover" />
@@ -129,9 +161,36 @@ export default function Register() {
               </button>
             </>
           ) : (
-            <Button className="w-full" size="lg" onClick={handleRegister} disabled={isSubmitting}>
-              {isSubmitting ? "Sending OTP..." : "Send OTP"}
-            </Button>
+            <>
+              <Button className="w-full" size="lg" onClick={handleRegister} disabled={isSubmitting}>
+                {isSubmitting ? "Sending OTP..." : "Send OTP"}
+              </Button>
+
+              <div className="relative py-1 text-center text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                <span className="bg-[var(--surface)] px-3">or continue with</span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"
+                  onClick={() => void handleFirebaseRegister("google")}
+                  disabled={Boolean(socialLoading)}
+                >
+                  <FcGoogle className="text-lg" />
+                  {socialLoading === "google" ? "Connecting..." : "Google"}
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3 text-sm"
+                  onClick={() => void handleFirebaseRegister("github")}
+                  disabled={Boolean(socialLoading)}
+                >
+                  <FiGithub className="text-lg" />
+                  {socialLoading === "github" ? "Connecting..." : "GitHub"}
+                </button>
+              </div>
+            </>
           )}
           <p className="text-center text-sm text-[var(--muted)]">
             Already have an account? <Link to={`/login${location.search}`} className="text-[var(--text)] underline-offset-4 hover:underline">Login</Link>

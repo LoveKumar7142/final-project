@@ -1,4 +1,4 @@
-import admin from "firebase-admin";
+let admin; // ❗ lazy load
 
 const formatPrivateKey = (value) => value?.replace(/\\n/g, "\n");
 
@@ -18,9 +18,19 @@ const getFirebaseCredentials = () => {
   };
 };
 
-export const getFirebaseAdminApp = () => {
-  if (admin.apps.length > 0) {
-    return admin.app();
+// 🔥 Lazy load firebase-admin
+const getAdmin = async () => {
+  if (!admin) {
+    admin = (await import("firebase-admin")).default;
+  }
+  return admin;
+};
+
+export const getFirebaseAdminApp = async () => {
+  const adminInstance = await getAdmin();
+
+  if (adminInstance.apps.length > 0) {
+    return adminInstance.app();
   }
 
   const credentialPayload = getFirebaseCredentials();
@@ -29,17 +39,24 @@ export const getFirebaseAdminApp = () => {
     return null;
   }
 
-  return admin.initializeApp({
-    credential: admin.credential.cert(credentialPayload),
+  return adminInstance.initializeApp({
+    credential: adminInstance.credential.cert(credentialPayload),
   });
 };
 
 export const verifyFirebaseToken = async (idToken) => {
-  const app = getFirebaseAdminApp();
+  const credentialPayload = getFirebaseCredentials();
+
+  if (!credentialPayload) {
+    throw new Error("Firebase admin credentials are missing");
+  }
+
+  const adminInstance = await getAdmin();
+  const app = await getFirebaseAdminApp();
 
   if (!app) {
     throw new Error("Firebase admin credentials are missing");
   }
 
-  return admin.auth(app).verifyIdToken(idToken, true);
+  return adminInstance.auth(app).verifyIdToken(idToken, true);
 };

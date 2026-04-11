@@ -1,26 +1,18 @@
 ﻿import express from "express";
-import {
-  firebaseLogin,
-  forgotPassword,
-  getCurrentUser,
-  loginUser,
-  registerUser,
-  resendRegistrationOtp,
-  resetPassword,
-  verifyRegistrationOtp,
-} from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { lazyRoute } from "../utils/lazyRoute.js";
 
 const router = express.Router();
+const loadAuthController = () => import("../controllers/authController.js");
 
-router.post("/register", registerUser);
-router.post("/register/resend-otp", resendRegistrationOtp);
-router.post("/register/verify-otp", verifyRegistrationOtp);
-router.post("/login", loginUser);
-router.post("/firebase", firebaseLogin);
-router.get("/me", protect, getCurrentUser);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post("/register", lazyRoute(loadAuthController, "registerUser"));
+router.post("/register/resend-otp", lazyRoute(loadAuthController, "resendRegistrationOtp"));
+router.post("/register/verify-otp", lazyRoute(loadAuthController, "verifyRegistrationOtp"));
+router.post("/login", lazyRoute(loadAuthController, "loginUser"));
+router.post("/firebase", lazyRoute(loadAuthController, "firebaseLogin"));
+router.get("/me", protect, lazyRoute(loadAuthController, "getCurrentUser"));
+router.post("/forgot-password", lazyRoute(loadAuthController, "forgotPassword"));
+router.post("/reset-password", lazyRoute(loadAuthController, "resetPassword"));
 
 export default router;
 

@@ -1,12 +1,10 @@
 import express from "express";
-import {
-  createHireOrder,
-  verifyHirePayment,
-} from "../controllers/orderController.js";
+import { lazyRoute } from "../utils/lazyRoute.js";
 
 const router = express.Router();
+const loadOrderController = () => import("../controllers/orderController.js");
 
-router.post("/create", createHireOrder);
-router.post("/verify", verifyHirePayment);
+router.post("/create", lazyRoute(loadOrderController, "createHireOrder"));
+router.post("/verify", lazyRoute(loadOrderController, "verifyHirePayment"));
 
 export default router;

@@ -26,6 +26,7 @@ import api, {
   type SiteSetting,
 } from "../api/axios";
 import type { Project } from "../types/contentModels";
+import { normalizeProjectList } from "../lib/projectPayload";
 
 type ProjectCategory = "Free" | "Paid";
 
@@ -128,7 +129,7 @@ export default function Dashboard() {
     queryKey: ["admin-projects"],
     queryFn: async () => {
       const response = await api.get<Project[]>("/api/projects");
-      return response.data;
+      return normalizeProjectList(response.data);
     },
     enabled: isAuthenticated && isAdmin,
   });

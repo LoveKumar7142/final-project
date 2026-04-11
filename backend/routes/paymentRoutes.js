@@ -1,10 +1,11 @@
 import express from "express";
-import { createOrder, verifyPayment } from "../controllers/paymentController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { lazyRoute } from "../utils/lazyRoute.js";
 
 const router = express.Router();
+const loadPaymentController = () => import("../controllers/paymentController.js");
 
-router.post("/create-order", protect, createOrder);
-router.post("/verify", protect, verifyPayment);
+router.post("/create-order", protect, lazyRoute(loadPaymentController, "createOrder"));
+router.post("/verify", protect, lazyRoute(loadPaymentController, "verifyPayment"));
 
 export default router;

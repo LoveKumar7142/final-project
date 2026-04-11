@@ -17,6 +17,7 @@ import type { Project } from "../types/contentModels";
 import { formatLocalPrice, getPricingMeta } from "../lib/pricing";
 import { useCurrency } from "../hooks/useCurrency";
 import { getProjectFallbackImage } from "../lib/editorialImages";
+import { normalizeProject } from "../lib/projectPayload";
 
 declare global {
   interface Window {
@@ -74,7 +75,11 @@ export default function ProjectDetail() {
     queryFn: async () => {
       try {
         const response = await api.get<Project>(`/api/projects/${id}`);
-        return response.data;
+        const normalizedProject = normalizeProject(response.data);
+        if (!normalizedProject) {
+          throw new Error("Invalid project payload");
+        }
+        return normalizedProject;
       } catch (error) {
         // Return mock data if API fails
         console.warn("API failed, using mock data:", error);

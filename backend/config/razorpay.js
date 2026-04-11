@@ -1,11 +1,22 @@
-import Razorpay from "razorpay";
-import dotenv from "dotenv";
+let razorpayInstance = null;
 
-dotenv.config();
+export const getRazorpay = async () => {
+  if (razorpayInstance) {
+    return razorpayInstance;
+  }
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+  const keyId = process.env.RAZORPAY_KEY_ID?.trim();
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
 
-export default razorpay;
+  if (!keyId || !keySecret) {
+    throw new Error("Razorpay credentials are missing");
+  }
+
+  const { default: Razorpay } = await import("razorpay");
+  razorpayInstance = new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
+
+  return razorpayInstance;
+};

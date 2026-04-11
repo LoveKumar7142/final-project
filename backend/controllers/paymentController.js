@@ -1,11 +1,12 @@
-import razorpay from "../config/razorpay.js";
 import crypto from "crypto";
 import pool from "../config/db.js";
 import { sendAutoReplyEmail, sendProjectSaleNotificationEmail } from "../utils/mailer.js";
+import { getRazorpay } from "../config/razorpay.js";
 
 // 🔹 Create Order
 export const createOrder = async (req, res) => {
   try {
+    const razorpay = await getRazorpay();
     const { projectId } = req.body;
 
     const [project] = await pool.query("SELECT * FROM projects WHERE id=?", [
