@@ -48,6 +48,8 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  config.headers["x-api-key"] = import.meta.env.VITE_API_KEY || "portfolio-secure-key-2026";
+
   return config;
 });
 
@@ -226,6 +228,22 @@ export const uploadSiteAsset = async (assetKey: string, file: File) => {
 
 export const deleteSiteAsset = async (assetKey: string) => {
   const { data } = await api.delete<{ message: string }>(`/api/upload/site-assets/${assetKey}`);
+  return data;
+};
+
+export const uploadProfileHeroImage = async (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post(`/api/upload/profile/hero-image`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+};
+
+export const deleteProfileHeroImage = async () => {
+  const { data } = await api.delete<{ message: string }>(`/api/upload/profile/hero-image`);
   return data;
 };
 

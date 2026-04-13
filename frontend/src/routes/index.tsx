@@ -16,6 +16,9 @@ const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 const Hire = lazy(() => import("../pages/Hire"));
 const Contact = lazy(() => import("../pages/Contact"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
+const Terms = lazy(() => import("../pages/Terms"));
+const Privacy = lazy(() => import("../pages/Privacy"));
+const Refunds = lazy(() => import("../pages/Refunds"));
 const NotFound = lazy(() => import("../pages/NotFound"));
 
 // Helper wrapper
@@ -42,6 +45,9 @@ const router = createBrowserRouter([
       { path: "register", element: withSuspense(Register) },
       { path: "forgot-password", element: withSuspense(ForgotPassword) },
       { path: "reset-password/:userId/:token", element: withSuspense(ResetPassword) },
+      { path: "terms", element: withSuspense(Terms) },
+      { path: "privacy", element: withSuspense(Privacy) },
+      { path: "refunds", element: withSuspense(Refunds) },
       { path: "*", element: withSuspense(NotFound) },
     ],
   },

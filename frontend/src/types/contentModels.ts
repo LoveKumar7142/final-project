@@ -42,6 +42,7 @@ export type Profile = {
   hero_description?: string;
   hero_image?: string;
   hero_image_public_id?: string;
+  hero_image_position?: string;
   about_intro?: string;
   current_company?: string;
   current_role?: string;

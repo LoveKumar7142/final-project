@@ -10,10 +10,12 @@ import {
 } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { isAdmin } from "../middleware/adminMiddleware.js";
+import { rateLimiter } from "../middleware/rateLimiter.js"; // ✅ ADD THIS
 
 const router = express.Router();
 
-router.use(protect, isAdmin);
+// 🔥 FINAL SECURITY LAYER (ORDER IMPORTANT)
+router.use(rateLimiter, protect, isAdmin);
 
 router.get("/summary", getAdminSummary);
 router.get("/orders", getOrders);
@@ -24,4 +26,3 @@ router.get("/content", getAdminContent);
 router.put("/content", saveAdminContent);
 
 export default router;
-

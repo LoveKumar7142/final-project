@@ -1,9 +1,10 @@
-const URL_PATTERN = /^[^\s]+$/i;
+const URL_PATTERN = /^(https?:\/\/[^\s]+|\/[^\s]*)$/i;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const toTrimmedString = (value, fallback = "") => {
   if (value === undefined || value === null) return fallback;
-  return String(value).trim();
+  const str = String(value).trim();
+  return str.length > 1000 ? str.slice(0, 1000) : str;
 };
 
 export const toNullableString = (value) => {
@@ -15,23 +16,30 @@ export const toBoolean = (value) => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
   if (typeof value === "string") {
-    return ["true", "1", "yes", "on"].includes(value.toLowerCase());
+    return ["true", "1", "yes", "on"].includes(value.toLowerCase().trim());
   }
   return false;
 };
 
 export const parseJsonArrayInput = (value) => {
   if (!value) return [];
-  if (Array.isArray(value)) return value.map((item) => toTrimmedString(item)).filter(Boolean);
+  if (Array.isArray(value))
+    return value.map((item) => toTrimmedString(item)).filter(Boolean);
 
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) {
-        return parsed.map((item) => toTrimmedString(item)).filter(Boolean);
+        return parsed
+          .slice(0, 50)
+          .map((item) => toTrimmedString(item))
+          .filter(Boolean);
       }
     } catch {
-      return value.split(",").map((item) => item.trim()).filter(Boolean);
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
     }
   }
 
@@ -44,9 +52,19 @@ export const assertValidProjectPayload = (project) => {
   if (!project.slug) {
     errors.push("Slug is required");
   } else if (!SLUG_PATTERN.test(project.slug)) {
-    errors.push("Slug can only contain lowercase letters, numbers, and hyphens");
+    errors.push(
+      "Slug can only contain lowercase letters, numbers, and hyphens",
+    );
   } else if (project.slug.length > 150) {
     errors.push("Slug must be 150 characters or fewer");
+  }
+
+  if (!Array.isArray(project.tech)) {
+    errors.push("Tech must be an array");
+  }
+
+  if (!Array.isArray(project.gallery)) {
+    errors.push("Gallery must be an array");
   }
 
   if (!project.title) {

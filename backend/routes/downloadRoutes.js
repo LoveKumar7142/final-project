@@ -1,9 +1,16 @@
 import express from "express";
-import { downloadProject } from "../controllers/downloadController.js";
+import {
+  generateDownloadUrl,
+  serveProxyDownload,
+} from "../controllers/downloadController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/:projectId", protect, downloadProject);
+// 🔐 Generate download link (auth required)
+router.post("/:projectId/generate", protect, generateDownloadUrl);
+
+// 🔐 Serve download (auth + token required)
+router.get("/serve", protect, serveProxyDownload);
 
 export default router;

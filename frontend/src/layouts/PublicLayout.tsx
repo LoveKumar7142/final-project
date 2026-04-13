@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Navbar from "../components/Navbar";
 import api from "../api/axios";
@@ -7,6 +7,7 @@ import { FiMail, FiMapPin, FiPhone, FiStar } from "react-icons/fi";
 import { getIconComponent } from "../lib/iconMap";
 import { useTheme } from "../context/ThemeContext";
 import GlobalProgress from "../components/GlobalProgress";
+import CookieConsent from "../components/CookieConsent";
 
 export default function PublicLayout() {
   const { theme } = useTheme();
@@ -21,6 +22,7 @@ export default function PublicLayout() {
   return (
     <div className="relative min-h-screen pb-10">
       <GlobalProgress />
+      <CookieConsent />
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_45%)]" />
       <Navbar />
       <main className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-6 sm:gap-14 sm:px-6 sm:py-8 lg:px-8">
@@ -44,11 +46,17 @@ export default function PublicLayout() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Contact</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Contact & Legal</p>
               <div className="mt-3 space-y-2 text-sm">
                 {data?.profile?.email ? <a href={`mailto:${data.profile.email}`} className="flex items-center gap-2 hover:underline"><FiMail className="text-[var(--muted)]" />{data.profile.email}</a> : null}
                 {data?.profile?.phone ? <a href={`tel:${data.profile.phone.replace(/\s+/g, "")}`} className="flex items-center gap-2 hover:underline"><FiPhone className="text-[var(--muted)]" />{data.profile.phone}</a> : null}
                 {data?.profile?.location ? <p className="flex items-center gap-2 text-[var(--muted)]"><FiMapPin />{data.profile.location}</p> : null}
+                
+                <div className="border-t border-[var(--border)] pt-2 mt-2 flex flex-col gap-2">
+                  <Link to="/terms" className="text-[var(--muted)] hover:text-[var(--text)] transition">Terms & Conditions</Link>
+                  <Link to="/privacy" className="text-[var(--muted)] hover:text-[var(--text)] transition">Privacy Policy</Link>
+                  <Link to="/refunds" className="text-[var(--muted)] hover:text-[var(--text)] transition">Refunds & Cancellation</Link>
+                </div>
               </div>
             </div>
 

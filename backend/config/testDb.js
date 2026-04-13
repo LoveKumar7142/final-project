@@ -2,10 +2,15 @@ import pool from "./db.js";
 
 const testDB = async () => {
   try {
-    const [rows] = await pool.query("SELECT 1");
+    await pool.query("SELECT 1");
+
     console.log("✅ Database connected successfully");
+
+    return true; // ✅ success signal
   } catch (error) {
-    console.error("❌ DB Connection Failed:", error.message);
+    console.error("DB CONNECTION ERROR:", error);
+
+    return false; // ❌ failure signal
   }
 };
 

@@ -83,35 +83,66 @@ export const getAdminSummary = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
 export const getOrders = async (req, res) => {
   try {
-    const [orders] = await pool.query("SELECT * FROM orders ORDER BY created_at DESC, id DESC");
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+    const offset = Number(req.query.offset) || 0;
+
+    const [orders] = await pool.query(
+      "SELECT * FROM orders ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      [limit, offset],
+    );
+
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("GET ORDERS ERROR:", error);
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
 export const deleteOrder = async (req, res) => {
   try {
-    const { id } = req.params;
-    await pool.query("DELETE FROM orders WHERE id = ?", [id]);
+    // ✅ Auth check (assume middleware sets req.user)
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const id = Number(req.params.id);
+
+    // ✅ Validation
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    const [result] = await pool.query("DELETE FROM orders WHERE id = ?", [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
     res.json({ message: "Order deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("DELETE ORDER ERROR:", error); // only server log
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
 export const getMessages = async (req, res) => {
   try {
-    const [messages] = await pool.query("SELECT * FROM messages ORDER BY created_at DESC, id DESC");
+    const [messages] = await pool.query(
+      "SELECT * FROM messages ORDER BY created_at DESC, id DESC",
+    );
     res.json(messages);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -121,7 +152,7 @@ export const deleteMessage = async (req, res) => {
     await pool.query("DELETE FROM messages WHERE id = ?", [id]);
     res.json({ message: "Message deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -130,7 +161,7 @@ export const getAdminContent = async (req, res) => {
     const content = await readContentBundle();
     res.json(content);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -155,7 +186,7 @@ export const saveAdminContent = async (req, res) => {
     if (existingContent.profile?.id) {
       await connection.query(
         `UPDATE portfolio_profile
-         SET \`full_name\` = ?, \`headline\` = ?, \`subheadline\` = ?, \`hero_title\` = ?, \`hero_description\` = ?, \`hero_image\` = ?, \`hero_image_public_id\` = ?, \`about_intro\` = ?, \`current_company\` = ?, \`current_role\` = ?, \`current_summary\` = ?, \`location\` = ?, \`email\` = ?, \`phone\` = ?
+         SET \`full_name\` = ?, \`headline\` = ?, \`subheadline\` = ?, \`hero_title\` = ?, \`hero_description\` = ?, \`hero_image\` = ?, \`hero_image_public_id\` = ?, \`hero_image_position\` = ?, \`about_intro\` = ?, \`current_company\` = ?, \`current_role\` = ?, \`current_summary\` = ?, \`location\` = ?, \`email\` = ?, \`phone\` = ?
          WHERE \`id\` = ?`,
         [
           toText(profile.full_name) || existingContent.profile.full_name,
@@ -163,10 +194,15 @@ export const saveAdminContent = async (req, res) => {
           toText(profile.subheadline),
           toText(profile.hero_title),
           toText(profile.hero_description),
-          profile.hero_image !== undefined ? toText(profile.hero_image) : existingContent.profile.hero_image,
+          profile.hero_image !== undefined
+            ? toText(profile.hero_image)
+            : existingContent.profile.hero_image,
           profile.hero_image_public_id !== undefined
             ? toText(profile.hero_image_public_id)
             : existingContent.profile.hero_image_public_id,
+          profile.hero_image_position !== undefined
+            ? toText(profile.hero_image_position)
+            : existingContent.profile.hero_image_position || "right",
           toText(profile.about_intro),
           toText(profile.current_company),
           toText(profile.current_role),
@@ -180,8 +216,8 @@ export const saveAdminContent = async (req, res) => {
     } else {
       await connection.query(
         `INSERT INTO portfolio_profile
-         (\`full_name\`, \`headline\`, \`subheadline\`, \`hero_title\`, \`hero_description\`, \`hero_image\`, \`hero_image_public_id\`, \`about_intro\`, \`current_company\`, \`current_role\`, \`current_summary\`, \`location\`, \`email\`, \`phone\`)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (\`full_name\`, \`headline\`, \`subheadline\`, \`hero_title\`, \`hero_description\`, \`hero_image\`, \`hero_image_public_id\`, \`hero_image_position\`, \`about_intro\`, \`current_company\`, \`current_role\`, \`current_summary\`, \`location\`, \`email\`, \`phone\`)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           toText(profile.full_name) || "Love Kumar",
           toText(profile.headline),
@@ -190,6 +226,7 @@ export const saveAdminContent = async (req, res) => {
           toText(profile.hero_description),
           toText(profile.hero_image),
           toText(profile.hero_image_public_id),
+          toText(profile.hero_image_position) || "right",
           toText(profile.about_intro),
           toText(profile.current_company),
           toText(profile.current_role),
@@ -204,113 +241,169 @@ export const saveAdminContent = async (req, res) => {
     await connection.query("DELETE FROM site_settings");
     if (siteSettings.length > 0) {
       const siteSettingsVals = [];
-      const siteSettingsPh = siteSettings.map((item, index) => {
-        siteSettingsVals.push(
-          toText(item.setting_key) || `setting_${index}`,
-          toText(item.label) || toText(item.setting_key) || `Setting ${index}`,
-          toText(item.setting_value),
-          toText(item.setting_group) || "general",
-          toNumber(item.sort_order, index + 1)
-        );
-        return "(?, ?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO site_settings (setting_key, label, setting_value, setting_group, sort_order) VALUES ${siteSettingsPh}`, siteSettingsVals);
+      const siteSettingsPh = siteSettings
+        .map((item, index) => {
+          siteSettingsVals.push(
+            toText(item.setting_key) || `setting_${index}`,
+            toText(item.label) ||
+              toText(item.setting_key) ||
+              `Setting ${index}`,
+            toText(item.setting_value),
+            toText(item.setting_group) || "general",
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO site_settings (setting_key, label, setting_value, setting_group, sort_order) VALUES ${siteSettingsPh}`,
+        siteSettingsVals,
+      );
     }
 
     await connection.query("DELETE FROM site_assets");
     if (siteAssets.length > 0) {
       const siteAssetsVals = [];
-      const siteAssetsPh = siteAssets.map((item, index) => {
-        siteAssetsVals.push(
-          toText(item.asset_key) || `asset_${index}`,
-          toText(item.label) || toText(item.asset_key) || `Asset ${index}`,
-          toText(item.asset_url),
-          toText(item.asset_public_id),
-          toNumber(item.sort_order, index + 1)
-        );
-        return "(?, ?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO site_assets (asset_key, label, asset_url, asset_public_id, sort_order) VALUES ${siteAssetsPh}`, siteAssetsVals);
+      const siteAssetsPh = siteAssets
+        .map((item, index) => {
+          siteAssetsVals.push(
+            toText(item.asset_key) || `asset_${index}`,
+            toText(item.label) || toText(item.asset_key) || `Asset ${index}`,
+            toText(item.asset_url),
+            toText(item.asset_public_id),
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO site_assets (asset_key, label, asset_url, asset_public_id, sort_order) VALUES ${siteAssetsPh}`,
+        siteAssetsVals,
+      );
     }
 
     await connection.query("DELETE FROM social_links");
     if (socialLinks.length > 0) {
       const socialLinksVals = [];
-      const socialLinksPh = socialLinks.map((item, index) => {
-        socialLinksVals.push(toText(item.label) || "Link", toText(item.url) || "#", toText(item.icon), toNumber(item.sort_order, index + 1));
-        return "(?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO social_links (label, url, icon, sort_order) VALUES ${socialLinksPh}`, socialLinksVals);
+      const socialLinksPh = socialLinks
+        .map((item, index) => {
+          socialLinksVals.push(
+            toText(item.label) || "Link",
+            toText(item.url) || "#",
+            toText(item.icon),
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO social_links (label, url, icon, sort_order) VALUES ${socialLinksPh}`,
+        socialLinksVals,
+      );
     }
 
     await connection.query("DELETE FROM home_stats");
     if (homeStats.length > 0) {
       const homeStatsVals = [];
-      const homeStatsPh = homeStats.map((item, index) => {
-        homeStatsVals.push(toText(item.label) || "Stat", toText(item.value) || "0", toNumber(item.sort_order, index + 1));
-        return "(?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO home_stats (label, value, sort_order) VALUES ${homeStatsPh}`, homeStatsVals);
+      const homeStatsPh = homeStats
+        .map((item, index) => {
+          homeStatsVals.push(
+            toText(item.label) || "Stat",
+            toText(item.value) || "0",
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO home_stats (label, value, sort_order) VALUES ${homeStatsPh}`,
+        homeStatsVals,
+      );
     }
 
     await connection.query("DELETE FROM home_capabilities");
     if (capabilities.length > 0) {
       const capabilitiesVals = [];
-      const capabilitiesPh = capabilities.map((item, index) => {
-        capabilitiesVals.push(toText(item.title) || "Capability", toText(item.description), toText(item.icon), toNumber(item.sort_order, index + 1));
-        return "(?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO home_capabilities (title, description, icon, sort_order) VALUES ${capabilitiesPh}`, capabilitiesVals);
+      const capabilitiesPh = capabilities
+        .map((item, index) => {
+          capabilitiesVals.push(
+            toText(item.title) || "Capability",
+            toText(item.description),
+            toText(item.icon),
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO home_capabilities (title, description, icon, sort_order) VALUES ${capabilitiesPh}`,
+        capabilitiesVals,
+      );
     }
 
     await connection.query("DELETE FROM service_offerings");
     if (services.length > 0) {
       const servicesVals = [];
-      const servicesPh = services.map((item, index) => {
-        servicesVals.push(
-          toText(item.title) || "Service",
-          toText(item.description),
-          toText(item.icon),
-          toText(item.badge),
-          toText(item.cta_text),
-          toNumber(item.sort_order, index + 1),
-          toBoolean(item.is_active)
-        );
-        return "(?, ?, ?, ?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO service_offerings (title, description, icon, badge, cta_text, sort_order, is_active) VALUES ${servicesPh}`, servicesVals);
+      const servicesPh = services
+        .map((item, index) => {
+          servicesVals.push(
+            toText(item.title) || "Service",
+            toText(item.description),
+            toText(item.icon),
+            toText(item.badge),
+            toText(item.cta_text),
+            toNumber(item.sort_order, index + 1),
+            toBoolean(item.is_active),
+          );
+          return "(?, ?, ?, ?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO service_offerings (title, description, icon, badge, cta_text, sort_order, is_active) VALUES ${servicesPh}`,
+        servicesVals,
+      );
     }
 
     await connection.query("DELETE FROM about_sections");
     if (aboutSections.length > 0) {
       const aboutSectionsVals = [];
-      const aboutSectionsPh = aboutSections.map((item, index) => {
-        aboutSectionsVals.push(
-          toText(item.section_key) || `section_${index}`,
-          toText(item.title) || "Section Title",
-          toText(item.description),
-          toNumber(item.sort_order, index + 1)
-        );
-        return "(?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO about_sections (section_key, title, description, sort_order) VALUES ${aboutSectionsPh}`, aboutSectionsVals);
+      const aboutSectionsPh = aboutSections
+        .map((item, index) => {
+          aboutSectionsVals.push(
+            toText(item.section_key) || `section_${index}`,
+            toText(item.title) || "Section Title",
+            toText(item.description),
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO about_sections (section_key, title, description, sort_order) VALUES ${aboutSectionsPh}`,
+        aboutSectionsVals,
+      );
     }
 
     await connection.query("DELETE FROM about_items");
     if (aboutItems.length > 0) {
       const aboutItemsVals = [];
-      const aboutItemsPh = aboutItems.map((item, index) => {
-        aboutItemsVals.push(
-          toText(item.section_key) || "default_section",
-          toText(item.title),
-          toText(item.description),
-          toText(item.meta_value),
-          toText(item.icon),
-          toNumber(item.sort_order, index + 1)
-        );
-        return "(?, ?, ?, ?, ?, ?)";
-      }).join(",");
-      await connection.query(`INSERT INTO about_items (section_key, title, description, meta_value, icon, sort_order) VALUES ${aboutItemsPh}`, aboutItemsVals);
+      const aboutItemsPh = aboutItems
+        .map((item, index) => {
+          aboutItemsVals.push(
+            toText(item.section_key) || "default_section",
+            toText(item.title),
+            toText(item.description),
+            toText(item.meta_value),
+            toText(item.icon),
+            toNumber(item.sort_order, index + 1),
+          );
+          return "(?, ?, ?, ?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO about_items (section_key, title, description, meta_value, icon, sort_order) VALUES ${aboutItemsPh}`,
+        aboutItemsVals,
+      );
     }
 
     await connection.commit();
@@ -323,14 +416,22 @@ export const saveAdminContent = async (req, res) => {
     });
   } catch (error) {
     console.error("ADMIN UDPATE ERROR:", error);
-    import("fs").then(fs => fs.writeFileSync("admin_error.log", error.stack || error.message)).catch(() => {});
+    import("fs")
+      .then((fs) =>
+        fs.writeFileSync("admin_error.log", error.stack || error.message),
+      )
+      .catch(() => {});
     if (connection) {
-      try { await connection.rollback(); } catch(e) {}
+      try {
+        await connection.rollback();
+      } catch (e) {}
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error" });
   } finally {
     if (connection) {
-      try { connection.release(); } catch(e) {}
+      try {
+        connection.release();
+      } catch (e) {}
     }
   }
 };

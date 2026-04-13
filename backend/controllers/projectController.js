@@ -9,39 +9,85 @@ import {
 import { destroyCloudinaryAsset } from "../utils/cloudinaryAssets.js";
 
 const normalizeProject = (project) => ({
-  ...project,
+  id: project.id,
+  slug: project.slug,
+  title: project.title,
+  tagline: project.tagline,
+  description: project.description,
+  long_description: project.long_description,
   tech: parseJsonArrayInput(project.tech),
   gallery: parseJsonArrayInput(project.gallery),
-  image_url: project.image_url || project.hero_image || null,
-  image_public_id: project.image_public_id || project.hero_image_public_id || null,
+  price: project.price,
+  demo_url: project.demo_url,
+  category: project.category,
+  is_featured: project.is_featured,
+  is_paid: project.is_paid,
+  download_count: project.download_count,
+  created_at: project.created_at,
 });
 
 const mapProjectPayload = (payload) => {
   const imageUrl = toNullableString(payload.image_url ?? payload.hero_image);
-  const imagePublicId = toNullableString(payload.image_public_id ?? payload.hero_image_public_id);
+  const imagePublicId = toNullableString(
+    payload.image_public_id ?? payload.hero_image_public_id,
+  );
+
   const tech = parseJsonArrayInput(payload.tech);
   const gallery = parseJsonArrayInput(payload.gallery);
 
+  // ✅ SAFE PRICE VALIDATION
+  const price = Number(payload.price ?? 0);
+
+  if (!Number.isInteger(price) || price < 0 || price > 10000000) {
+    throw createUploadError("Invalid price");
+  }
+
+  // ✅ URL VALIDATION
+  const demoUrl = toNullableString(payload.demo_url);
+
+  if (demoUrl && !/^https?:\/\/.+/.test(demoUrl)) {
+    throw createUploadError("Invalid demo URL");
+  }
+
+  const fileUrl = toNullableString(payload.file);
+
+  if (fileUrl && !/^https?:\/\/.+/.test(fileUrl)) {
+    throw createUploadError("Invalid file URL");
+  }
+
+  // ✅ FINAL OBJECT
   const project = {
-    slug: toTrimmedString(payload.slug).toLowerCase(),
+    slug: toTrimmedString(payload.slug)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-"),
+
     title: toTrimmedString(payload.title),
     tagline: toNullableString(payload.tagline),
     description: toNullableString(payload.description),
     long_description: toNullableString(payload.long_description),
+
     tech,
     gallery,
-    price: Number(payload.price || 0),
-    file: toNullableString(payload.file),
+
+    price: price,
+
+    file: fileUrl,
     file_name: toNullableString(payload.file_name),
     file_public_id: toNullableString(payload.file_public_id),
-    demo_url: toNullableString(payload.demo_url),
+
+    demo_url: demoUrl,
+
     hero_image: imageUrl,
     hero_image_public_id: imagePublicId,
     image_url: imageUrl,
     image_public_id: imagePublicId,
+
     category: payload.category === "Free" ? "Free" : "Paid",
+
     is_featured: toBoolean(payload.is_featured),
     is_paid: toBoolean(payload.is_paid),
+
     sort_order: Number(payload.sort_order) || 0,
   };
 
@@ -54,7 +100,10 @@ const mapProjectPayload = (payload) => {
 };
 
 const fetchProjectById = async (id) => {
-  const [projects] = await pool.query("SELECT * FROM projects WHERE id = ? LIMIT 1", [id]);
+  const [projects] = await pool.query(
+    "SELECT * FROM projects WHERE id = ? LIMIT 1",
+    [id],
+  );
   return projects[0] || null;
 };
 
@@ -76,7 +125,9 @@ export const addProject = async (req, res) => {
     );
 
     if (existingProjects.length > 0) {
-      return res.status(400).json({ message: "A project with this slug already exists" });
+      return res
+        .status(400)
+        .json({ message: "A project with this slug already exists" });
     }
 
     const [result] = await pool.query(
@@ -123,16 +174,27 @@ export const addProject = async (req, res) => {
 
 export const getProjects = async (req, res) => {
   try {
-    const [projects] = await pool.query("SELECT * FROM projects ORDER BY sort_order ASC, id DESC");
+    const [projects] = await pool.query(
+      "SELECT * FROM projects ORDER BY sort_order ASC, id DESC",
+    );
     res.json(projects.map(normalizeProject));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("PROJECT ERROR:", error);
+
+    res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Internal server error",
+    });
   }
 };
 
 export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
+    const safeId = Number(id);
+
+    if (!Number.isInteger(safeId) || safeId <= 0) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
 
     const [projects] = await pool.query(
       "SELECT * FROM projects WHERE id = ? OR slug = ? LIMIT 1",
@@ -145,7 +207,11 @@ export const getProjectById = async (req, res) => {
 
     res.json(normalizeProject(projects[0]));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("PROJECT ERROR:", error);
+
+    res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Internal server error",
+    });
   }
 };
 
@@ -160,12 +226,12 @@ export const updateProject = async (req, res) => {
 
     const project = mapProjectPayload({ ...existingProject, ...req.body });
 
-    // 🚀 Auto-detect manual URL changes and detach Cloudinary public IDs so old files get hard-deleted
+    // ðŸš€ Auto-detect manual URL changes and detach Cloudinary public IDs so old files get hard-deleted
     if (project.image_url !== existingProject.image_url) {
       project.image_public_id = null;
       project.hero_image_public_id = null;
     }
-    
+
     if (project.file !== existingProject.file) {
       project.file_public_id = null;
     }
@@ -176,7 +242,9 @@ export const updateProject = async (req, res) => {
     );
 
     if (slugConflict.length > 0) {
-      return res.status(400).json({ message: "Another project already uses this slug" });
+      return res
+        .status(400)
+        .json({ message: "Another project already uses this slug" });
     }
 
     await pool.query(
@@ -208,14 +276,23 @@ export const updateProject = async (req, res) => {
       ],
     );
 
-    const staleImageIds = [existingProject.hero_image_public_id, existingProject.image_public_id].filter(Boolean);
+    const staleImageIds = [
+      existingProject.hero_image_public_id,
+      existingProject.image_public_id,
+    ].filter(Boolean);
     for (const publicId of staleImageIds) {
-      if (publicId !== project.hero_image_public_id && publicId !== project.image_public_id) {
+      if (
+        publicId !== project.hero_image_public_id &&
+        publicId !== project.image_public_id
+      ) {
         await destroyCloudinaryAsset(publicId, "image");
       }
     }
 
-    if (existingProject.file_public_id && existingProject.file_public_id !== project.file_public_id) {
+    if (
+      existingProject.file_public_id &&
+      existingProject.file_public_id !== project.file_public_id
+    ) {
       await destroyCloudinaryAsset(existingProject.file_public_id, "raw");
     }
 
@@ -247,7 +324,11 @@ export const deleteProject = async (req, res) => {
 
     res.json({ message: "Project deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("PROJECT ERROR:", error);
+
+    res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Internal server error",
+    });
   }
 };
 
@@ -255,15 +336,28 @@ export const reorderProjects = async (req, res) => {
   try {
     const { projectIds } = req.body;
     if (!projectIds || !Array.isArray(projectIds)) {
-       return res.status(400).json({ message: "Invalid project array" });
+      return res.status(400).json({ message: "Invalid project array" });
     }
-    
-    // Process reordering
+
+    if (projectIds.length > 100) {
+      return res.status(400).json({ message: "Too many items" });
+    }
+
     for (let i = 0; i < projectIds.length; i++) {
-        await pool.query("UPDATE projects SET sort_order = ? WHERE id = ?", [i, projectIds[i]]);
+      const id = Number(projectIds[i]);
+      if (!Number.isInteger(id)) continue;
+
+      await pool.query("UPDATE projects SET sort_order = ? WHERE id = ?", [
+        i,
+        id,
+      ]);
     }
     res.json({ message: "Projects reordered successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("PROJECT ERROR:", error);
+
+    res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Internal server error",
+    });
   }
 };

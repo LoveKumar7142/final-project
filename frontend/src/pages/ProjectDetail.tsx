@@ -362,11 +362,20 @@ export default function ProjectDetail() {
               {isPurchased ? (
                 <Button
                   size="lg"
-                  onClick={() =>
-                    toast.success(
-                      "Download flow unlocked. Connect your protected download file to enable real downloads.",
-                    )
-                  }
+                  onClick={async () => {
+                    try {
+                      const toastId = toast.loading("Generating secure download link...");
+                      const { data } = await api.post(`/api/download/${project.id}/generate`);
+                      toast.dismiss(toastId);
+                      if (data.signedUrl) {
+                        const baseUrl = api.defaults.baseURL || "";
+                        window.open(`${baseUrl}${data.signedUrl}`, '_blank');
+                      }
+                    } catch (err: any) {
+                      toast.dismiss();
+                      toast.error("Failed to generate download link.");
+                    }
+                  }}
                 >
                   <FiDownload /> Download
                 </Button>

@@ -87,7 +87,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, delay: 0.08 }}
-          className="relative order-first mx-auto flex w-full max-w-[360px] items-end justify-center px-2 py-2 sm:max-w-[470px] sm:px-4 sm:py-4 lg:order-none lg:max-w-[600px] lg:px-4 lg:py-8"
+          className={`relative mx-auto flex w-full max-w-[360px] items-end justify-center px-2 py-2 sm:max-w-[470px] sm:px-4 sm:py-4 lg:max-w-[600px] lg:px-4 lg:py-8 ${profile?.hero_image_position === 'left' ? 'order-first' : 'order-first lg:order-none'}`}
         >
           <motion.div
             animate={{ y: [0, -10, 0] }}

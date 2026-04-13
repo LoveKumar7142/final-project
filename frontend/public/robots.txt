@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Prevent crawling of secure/account areas
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /checkout/
+
+Sitemap: https://yourdomain.com/sitemap.xml

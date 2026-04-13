@@ -16,7 +16,6 @@ const allowedImageMimeTypes = new Set([
 const allowedArchiveMimeTypes = new Set([
   "application/zip",
   "application/x-zip-compressed",
-  "application/octet-stream",
   "application/x-7z-compressed",
   "application/vnd.rar",
   "application/x-rar-compressed",
@@ -37,6 +36,13 @@ const createUploader = ({ maxSize, fileFilter }) =>
     },
     fileFilter: (req, file, callback) => {
       try {
+        // ✅ sanitize filename
+        if (file.originalname) {
+          file.originalname = file.originalname
+            .replace(/[^a-zA-Z0-9.\-_]/g, "-")
+            .replace(/\s+/g, "-");
+        }
+
         fileFilter(file);
         callback(null, true);
       } catch (error) {
@@ -49,7 +55,9 @@ export const uploadImage = createUploader({
   maxSize: MAX_IMAGE_SIZE,
   fileFilter: (file) => {
     if (!allowedImageMimeTypes.has(file.mimetype)) {
-      throw createUploadError("Only JPG, PNG, WEBP, SVG, or GIF images are allowed");
+      throw createUploadError(
+        "Only JPG, PNG, WEBP, SVG, or GIF images are allowed",
+      );
     }
   },
 });
@@ -58,8 +66,13 @@ export const uploadArchive = createUploader({
   maxSize: MAX_ARCHIVE_SIZE,
   fileFilter: (file) => {
     const lowerName = String(file.originalname || "").toLowerCase();
-    const looksLikeArchive = [".zip", ".rar", ".7z"].some((ext) => lowerName.endsWith(ext));
-    if (!looksLikeArchive && !allowedArchiveMimeTypes.has(file.mimetype)) {
+
+    const validExtensions = [".zip", ".rar", ".7z"];
+    const hasValidExt = validExtensions.some((ext) => lowerName.endsWith(ext));
+
+    const validMime = allowedArchiveMimeTypes.has(file.mimetype);
+
+    if (!validMime || !hasValidExt) {
       throw createUploadError("Only ZIP, RAR, or 7Z archives are allowed");
     }
   },
@@ -79,15 +92,21 @@ const uploadAny = createUploader({
   maxSize: MAX_GENERIC_SIZE,
   fileFilter: (file) => {
     const lowerName = String(file.originalname || "").toLowerCase();
-    const looksLikeArchive = [".zip", ".rar", ".7z"].some((ext) => lowerName.endsWith(ext));
-    const looksLikeDoc = [".pdf", ".doc", ".docx", ".txt", ".csv"].some((ext) => lowerName.endsWith(ext));
-    
+    const looksLikeArchive = [".zip", ".rar", ".7z"].some((ext) =>
+      lowerName.endsWith(ext),
+    );
+    const looksLikeDoc = [".pdf", ".doc", ".docx", ".txt", ".csv"].some((ext) =>
+      lowerName.endsWith(ext),
+    );
+
     if (
       !looksLikeArchive &&
       !looksLikeDoc &&
       !allowedGenericMimeTypes.has(file.mimetype)
     ) {
-      throw createUploadError("Only Images, Archives, PDFs, and Documents are allowed");
+      throw createUploadError(
+        "Only Images, Archives, PDFs, and Documents are allowed",
+      );
     }
   },
 });

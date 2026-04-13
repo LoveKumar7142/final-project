@@ -3,10 +3,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateToken } from "../utils/jwt.js";
 import { verifyFirebaseToken } from "../config/firebaseAdmin.js";
-import { sendOtpVerificationEmail, sendPasswordResetEmail } from "../utils/mailer.js";
+import {
+  sendOtpVerificationEmail,
+  sendPasswordResetEmail,
+} from "../utils/mailer.js";
 
 const OTP_EXPIRY_MINUTES = 10;
 
+// ================= HELPERS =================
 const sanitizeUser = (user) => ({
   id: user.id,
   name: user.name,
@@ -16,7 +20,10 @@ const sanitizeUser = (user) => ({
   email_verified: Boolean(user.email_verified),
 });
 
-const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+const normalizeEmail = (email) =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
 
 const generatePasswordResetToken = (user) =>
   jwt.sign(
@@ -33,20 +40,24 @@ const getOtpExpiryDate = () => {
   return date;
 };
 
+// ================= REGISTER =================
 const requestRegistrationOtp = async ({ name, email, password }) => {
   const normalizedEmail = normalizeEmail(email);
 
   if (!name?.trim() || !normalizedEmail || !password) {
-    const error = new Error("Name, email, and password are required");
-    error.statusCode = 400;
-    throw error;
+    throw new Error("Name, email and password are required");
   }
 
-  const [existingUsers] = await pool.query("SELECT id FROM users WHERE email = ?", [normalizedEmail]);
-  if (existingUsers.length > 0) {
-    const error = new Error("User already exists");
-    error.statusCode = 400;
-    throw error;
+  if (password.length < 6) {
+    throw new Error("Password must be at least 6 characters");
+  }
+
+  const [existing] = await pool.query("SELECT id FROM users WHERE email = ?", [
+    normalizedEmail,
+  ]);
+
+  if (existing.length > 0) {
+    throw new Error("User already exists");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -57,11 +68,11 @@ const requestRegistrationOtp = async ({ name, email, password }) => {
     `INSERT INTO email_verifications (name, email, password_hash, otp_code, expires_at)
      VALUES (?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
-       name = VALUES(name),
-       password_hash = VALUES(password_hash),
-       otp_code = VALUES(otp_code),
-       expires_at = VALUES(expires_at),
-       verified_at = NULL`,
+     name=VALUES(name),
+     password_hash=VALUES(password_hash),
+     otp_code=VALUES(otp_code),
+     expires_at=VALUES(expires_at),
+     verified_at=NULL`,
     [name.trim(), normalizedEmail, hashedPassword, otpCode, expiresAt],
   );
 
@@ -76,118 +87,129 @@ const requestRegistrationOtp = async ({ name, email, password }) => {
 
 export const registerUser = async (req, res) => {
   try {
-    const normalizedEmail = await requestRegistrationOtp(req.body);
-    res.status(200).json({
-      message: `OTP sent successfully. It will expire in ${OTP_EXPIRY_MINUTES} minutes.`,
-      email: normalizedEmail,
+    const email = await requestRegistrationOtp(req.body);
+    res.json({
+      message: "OTP sent successfully",
+      email,
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
 export const resendRegistrationOtp = async (req, res) => {
   try {
-    const normalizedEmail = await requestRegistrationOtp(req.body);
-    res.status(200).json({
-      message: "OTP resent successfully",
-      email: normalizedEmail,
-    });
+    const email = await requestRegistrationOtp(req.body);
+    res.json({ message: "OTP resent successfully", email });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
 export const verifyRegistrationOtp = async (req, res) => {
   try {
-    const normalizedEmail = normalizeEmail(req.body.email);
-    const otpCode = String(req.body.otp || "").trim();
+    const email = normalizeEmail(req.body.email);
+    const otp = String(req.body.otp || "").trim();
 
-    if (!normalizedEmail || !otpCode) {
-      return res.status(400).json({ message: "Email and OTP are required" });
-    }
-
-    const [pendingRows] = await pool.query(
-      "SELECT * FROM email_verifications WHERE email = ? LIMIT 1",
-      [normalizedEmail],
+    const [rows] = await pool.query(
+      "SELECT * FROM email_verifications WHERE email = ?",
+      [email],
     );
 
-    if (pendingRows.length === 0) {
-      return res.status(404).json({ message: "No pending verification found for this email" });
+    if (!rows.length) {
+      return res.status(404).json({ message: "No OTP found" });
     }
 
-    const pending = pendingRows[0];
-    const expiryTime = new Date(pending.expires_at).getTime();
+    const data = rows[0];
 
-    if (pending.verified_at) {
-      return res.status(400).json({ message: "This email is already verified" });
+    if (Date.now() > new Date(data.expires_at)) {
+      return res.status(400).json({ message: "OTP expired" });
     }
 
-    if (Date.now() > expiryTime) {
-      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+    // ✅ OTP attempt limit check (ADD ABOVE OTP MATCH)
+    if (data.otp_attempts >= 5) {
+      return res.status(429).json({ message: "Too many attempts. Try later" });
     }
 
-    if (pending.otp_code !== otpCode) {
+    // ❌ Wrong OTP
+    if (data.otp_code !== otp) {
+      await pool.query(
+        "UPDATE email_verifications SET otp_attempts = otp_attempts + 1 WHERE email=?",
+        [email],
+      );
+
       return res.status(400).json({ message: "Invalid OTP" });
     }
-
     const [result] = await pool.query(
       `INSERT INTO users (name, email, password, role, auth_provider, email_verified)
        VALUES (?, ?, ?, 'user', 'local', TRUE)`,
-      [pending.name, pending.email, pending.password_hash],
+      [data.name, data.email, data.password_hash],
     );
 
-    await pool.query("DELETE FROM email_verifications WHERE email = ?", [normalizedEmail]);
+    await pool.query("DELETE FROM email_verifications WHERE email = ?", [
+      email,
+    ]);
 
     const [users] = await pool.query(
-      "SELECT id, name, email, role, auth_provider, email_verified FROM users WHERE id = ?",
+      "SELECT id,name,email,role,auth_provider,email_verified FROM users WHERE id=?",
       [result.insertId],
     );
 
     const user = users[0];
 
-    res.status(201).json({
-      message: "Email verified and account created successfully",
+    res.json({
+      message: "Account created",
       token: generateToken(user),
       user: sanitizeUser(user),
     });
   } catch (error) {
-    if (error?.code === "ER_DUP_ENTRY") {
-      return res.status(400).json({ message: "User already exists" });
-    }
-    res.status(500).json({ message: error.message });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// ================= LOGIN =================
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
-    }
+    const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [
+      normalizeEmail(email),
+    ]);
 
-    const normalizedEmail = normalizeEmail(email);
-    const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
-
-    if (users.length === 0) {
+    if (!users.length) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const user = users[0];
 
-    if (!user.password) {
-      return res.status(400).json({ message: "Use your social login provider for this account" });
+    // ✅ Check lock
+    if (user.lock_until && new Date(user.lock_until) > new Date()) {
+      return res.status(403).json({ message: "Account locked. Try later" });
     }
 
-    if (!user.email_verified) {
-      return res.status(403).json({ message: "Please verify your email before logging in" });
-    }
+    const match = await bcrypt.compare(password, user.password);
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    if (!match) {
+      const attempts = user.login_attempts + 1;
+
+      await pool.query(
+        "UPDATE users SET login_attempts=?, lock_until=? WHERE id=?",
+        [
+          attempts,
+          attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null,
+          user.id,
+        ],
+      );
+
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    // ✅ Reset attempts after success
+    await pool.query(
+      "UPDATE users SET login_attempts=0, lock_until=NULL, last_login=NOW() WHERE id=?",
+      [user.id],
+    );
 
     res.json({
       message: "Login successful",
@@ -195,168 +217,142 @@ export const loginUser = async (req, res) => {
       user: sanitizeUser(user),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// ================= FIREBASE =================
 export const firebaseLogin = async (req, res) => {
   try {
-    const { idToken, provider } = req.body;
+    const { idToken } = req.body;
 
-    if (!idToken) {
-      return res.status(400).json({ message: "Firebase ID token is required" });
+    const decoded = await verifyFirebaseToken(idToken);
+
+    if (!decoded.email) {
+      return res.status(400).json({ message: "Invalid Firebase token" });
     }
+    const email = normalizeEmail(decoded.email);
+    const name = decoded.name || email.split("@")[0];
 
-    const decodedToken = await verifyFirebaseToken(idToken);
-    const email = normalizeEmail(decodedToken.email);
-    const name = decodedToken.name?.trim() || email.split("@")[0];
-    const firebaseUid = decodedToken.uid;
-    const authProvider = provider || decodedToken.firebase?.sign_in_provider || "firebase";
+    const [users] = await pool.query("SELECT * FROM users WHERE email=?", [
+      email,
+    ]);
 
-    if (!email) {
-      return res.status(400).json({ message: "Firebase account email is missing" });
-    }
-
-    if (!decodedToken.email_verified) {
-      return res.status(403).json({ message: "Please verify your email in Firebase first" });
-    }
-
-    const [existingUsers] = await pool.query("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
-
-    if (existingUsers.length === 0) {
+    if (!users.length) {
       const [result] = await pool.query(
-        `INSERT INTO users (name, email, password, firebase_uid, auth_provider, email_verified, role)
-         VALUES (?, ?, NULL, ?, ?, TRUE, 'user')`,
-        [name, email, firebaseUid, authProvider],
+        `INSERT INTO users (name,email,auth_provider,email_verified,role)
+         VALUES (?,?, 'firebase',TRUE,'user')`,
+        [name, email],
       );
 
-      const [createdUsers] = await pool.query(
-        "SELECT id, name, email, role, auth_provider, email_verified FROM users WHERE id = ?",
+      const [created] = await pool.query(
+        "SELECT id,name,email,role,auth_provider,email_verified FROM users WHERE id=?",
         [result.insertId],
       );
 
-      const createdUser = createdUsers[0];
       return res.json({
-        message: "Firebase login successful",
-        token: generateToken(createdUser),
-        user: sanitizeUser(createdUser),
+        token: generateToken(created[0]),
+        user: sanitizeUser(created[0]),
       });
     }
 
-    const existingUser = existingUsers[0];
-    await pool.query(
-      `UPDATE users
-       SET name = ?, firebase_uid = ?, auth_provider = ?, email_verified = TRUE
-       WHERE id = ?`,
-      [existingUser.name || name, firebaseUid, authProvider, existingUser.id],
-    );
-
-    const [updatedUsers] = await pool.query(
-      "SELECT id, name, email, role, auth_provider, email_verified FROM users WHERE id = ?",
-      [existingUser.id],
-    );
-
-    const updatedUser = updatedUsers[0];
-
     res.json({
-      message: "Firebase login successful",
-      token: generateToken(updatedUser),
-      user: sanitizeUser(updatedUser),
+      token: generateToken(users[0]),
+      user: sanitizeUser(users[0]),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// ================= CURRENT USER =================
 export const getCurrentUser = async (req, res) => {
-  try {
-    const [users] = await pool.query(
-      "SELECT id, name, email, role, auth_provider, email_verified FROM users WHERE id = ?",
-      [req.user.id],
-    );
+  const [users] = await pool.query(
+    "SELECT id,name,email,role,auth_provider,email_verified FROM users WHERE id=?",
+    [req.user.id],
+  );
 
-    if (users.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json({ user: sanitizeUser(users[0]) });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  if (!users.length) {
+    return res.status(404).json({ message: "User not found" });
   }
+
+  res.json({ user: sanitizeUser(users[0]) });
 };
 
+// ================= FORGOT PASSWORD =================
 export const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body.email);
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
+    const [users] = await pool.query("SELECT * FROM users WHERE email=?", [
+      email,
+    ]);
 
-    const normalizedEmail = normalizeEmail(email);
-    const [users] = await pool.query("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
-
-    if (users.length === 0) {
-      return res.status(404).json({ message: "No account found with this email" });
+    if (!users.length) {
+      return res.json({ message: "If account exists, email sent" });
     }
 
     const user = users[0];
 
-    if (!user.password) {
-      return res.status(400).json({ message: "Password reset is only available for email/password accounts" });
-    }
+    const token = generatePasswordResetToken(user);
 
-    const resetToken = generatePasswordResetToken(user);
+    // ✅ Save token in DB
+    await pool.query(
+      "UPDATE users SET password_reset_token=?, password_reset_expiry=? WHERE id=?",
+      [token, new Date(Date.now() + 15 * 60 * 1000), user.id],
+    );
 
-    const clientOrigin = (process.env.CLIENT_ORIGIN || "").split(",")[0].trim() || "https://lovecode.icu";
-    const fullResetUrl = `${clientOrigin}/reset-password/${user.id}/${resetToken}`;
+    // ✅ Send safe URL matching the React Router layout (/:userId/:token)
+    const url = `${process.env.CLIENT_ORIGIN}/reset-password/${user.id}/${token}`;
 
     await sendPasswordResetEmail({
       name: user.name,
       email: user.email,
-      resetUrl: fullResetUrl,
+      resetUrl: url,
     });
 
-    res.json({
-      message: "Password reset link has been sent to your email successfully",
-    });
+    res.json({ message: "Reset link sent" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// ================= RESET PASSWORD =================
 export const resetPassword = async (req, res) => {
   try {
     const { userId, token, password } = req.body;
-
-    if (!userId || !token || !password) {
-      return res.status(400).json({ message: "User, token, and new password are required" });
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "Weak password" });
     }
 
-    const [users] = await pool.query("SELECT * FROM users WHERE id = ?", [userId]);
+    const [users] = await pool.query("SELECT * FROM users WHERE id=?", [
+      userId,
+    ]);
 
-    if (users.length === 0) {
-      return res.status(404).json({ message: "User not found" });
+    if (!users.length) {
+      return res.json({ message: "If account exists, email sent" });
     }
 
     const user = users[0];
 
-    if (!user.password) {
-      return res.status(400).json({ message: "Password reset is only available for email/password accounts" });
+    if (
+      user.password_reset_token !== token ||
+      new Date(user.password_reset_expiry) < new Date()
+    ) {
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    const decoded = jwt.verify(token, `${process.env.JWT_SECRET}${user.password}`);
+    const hashed = await bcrypt.hash(password, 10);
 
-    if (decoded.type !== "password-reset" || Number(decoded.id) !== Number(userId)) {
-      return res.status(400).json({ message: "Invalid reset token" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await pool.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, userId]);
-
+    await pool.query(
+      "UPDATE users SET password=?, password_reset_token=NULL, password_reset_expiry=NULL WHERE id=?",
+      [hashed, userId],
+    );
     res.json({ message: "Password reset successful" });
   } catch (error) {
-    res.status(400).json({ message: "Reset link is invalid or expired" });
+    res.status(400).json({ message: "Invalid or expired token" });
   }
 };

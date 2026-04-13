@@ -1,4 +1,8 @@
-import { uploadBufferToCloudinary, destroyCloudinaryAsset, formatUploadResponse } from "../utils/cloudinaryAssets.js";
+import {
+  uploadBufferToCloudinary,
+  destroyCloudinaryAsset,
+  formatUploadResponse,
+} from "../utils/cloudinaryAssets.js";
 import pool from "../config/db.js";
 
 export const uploadProfileHeroImage = async (req, res) => {
@@ -6,7 +10,6 @@ export const uploadProfileHeroImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-
     const [profiles] = await pool.query(
       "SELECT id, hero_image_public_id FROM portfolio_profile ORDER BY id ASC LIMIT 1",
     );
@@ -28,7 +31,10 @@ export const uploadProfileHeroImage = async (req, res) => {
       [result.secure_url, result.public_id, profile.id],
     );
 
-    if (profile.hero_image_public_id && profile.hero_image_public_id !== result.public_id) {
+    if (
+      profile.hero_image_public_id &&
+      profile.hero_image_public_id !== result.public_id
+    ) {
       await destroyCloudinaryAsset(profile.hero_image_public_id, "image");
     }
 
@@ -43,7 +49,36 @@ export const uploadProfileHeroImage = async (req, res) => {
       profile: updatedProfiles[0] || null,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("UPLOAD ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const deleteProfileHeroImage = async (req, res) => {
+  try {
+    const [profiles] = await pool.query(
+      "SELECT id, hero_image_public_id FROM portfolio_profile ORDER BY id ASC LIMIT 1"
+    );
+
+    if (profiles.length === 0) {
+      return res.status(404).json({ message: "Portfolio profile not found" });
+    }
+
+    const profile = profiles[0];
+
+    if (profile.hero_image_public_id) {
+      await destroyCloudinaryAsset(profile.hero_image_public_id, "image");
+    }
+
+    await pool.query(
+      "UPDATE portfolio_profile SET hero_image = NULL, hero_image_public_id = NULL WHERE id = ?",
+      [profile.id]
+    );
+
+    res.json({ message: "Profile hero image deleted successfully from Cloudinary and database" });
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -52,7 +87,7 @@ export const uploadProjectHeroImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-
+  
     const { id } = req.params;
     const [projects] = await pool.query(
       "SELECT id, slug, hero_image_public_id, image_public_id FROM projects WHERE id = ? OR slug = ? LIMIT 1",
@@ -73,10 +108,19 @@ export const uploadProjectHeroImage = async (req, res) => {
 
     await pool.query(
       "UPDATE projects SET hero_image = ?, hero_image_public_id = ?, image_url = ?, image_public_id = ? WHERE id = ?",
-      [result.secure_url, result.public_id, result.secure_url, result.public_id, project.id],
+      [
+        result.secure_url,
+        result.public_id,
+        result.secure_url,
+        result.public_id,
+        project.id,
+      ],
     );
 
-    const previousPublicIds = [project.hero_image_public_id, project.image_public_id].filter(Boolean);
+    const previousPublicIds = [
+      project.hero_image_public_id,
+      project.image_public_id,
+    ].filter(Boolean);
     for (const publicId of previousPublicIds) {
       if (publicId !== result.public_id) {
         await destroyCloudinaryAsset(publicId, "image");
@@ -94,7 +138,8 @@ export const uploadProjectHeroImage = async (req, res) => {
       project: updatedProjects[0] || null,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("UPLOAD ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -115,7 +160,9 @@ export const uploadProjectArchive = async (req, res) => {
     }
 
     const project = projects[0];
-    const safeOriginalName = req.file.originalname?.replace(/\s+/g, "-") || `${project.slug || project.id}.zip`;
+    const safeOriginalName = req.file.originalname
+      ?.replace(/[^a-zA-Z0-9.\-_]/g, "-")
+      .replace(/\s+/g, "-");
     const publicId = `${project.slug || `project-${project.id}`}-archive`;
 
     const result = await uploadBufferToCloudinary(req.file.buffer, {
@@ -146,7 +193,8 @@ export const uploadProjectArchive = async (req, res) => {
       project: updatedProjects[0] || null,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("UPLOAD ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -155,9 +203,10 @@ export const uploadSiteAsset = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-
     const { assetKey } = req.params;
-    const normalizedKey = String(assetKey || "").trim().toLowerCase();
+    const normalizedKey = String(assetKey || "")
+      .trim()
+      .toLowerCase();
 
     if (!normalizedKey) {
       return res.status(400).json({ message: "Asset key is required" });
@@ -184,11 +233,20 @@ export const uploadSiteAsset = async (req, res) => {
     } else {
       await pool.query(
         "INSERT INTO site_assets (asset_key, label, asset_url, asset_public_id, sort_order) VALUES (?, ?, ?, ?, ?)",
-        [normalizedKey, normalizedKey, result.secure_url, result.public_id, 999],
+        [
+          normalizedKey,
+          normalizedKey,
+          result.secure_url,
+          result.public_id,
+          999,
+        ],
       );
     }
 
-    if (currentAsset?.asset_public_id && currentAsset.asset_public_id !== result.public_id) {
+    if (
+      currentAsset?.asset_public_id &&
+      currentAsset.asset_public_id !== result.public_id
+    ) {
       await destroyCloudinaryAsset(currentAsset.asset_public_id, "image");
     }
 
@@ -203,14 +261,17 @@ export const uploadSiteAsset = async (req, res) => {
       asset: updatedAssets[0] || null,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("UPLOAD ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
 export const deleteSiteAsset = async (req, res) => {
   try {
     const { assetKey } = req.params;
-    const normalizedKey = String(assetKey || "").trim().toLowerCase();
+    const normalizedKey = String(assetKey || "")
+      .trim()
+      .toLowerCase();
 
     const [existingAssets] = await pool.query(
       "SELECT * FROM site_assets WHERE asset_key = ? LIMIT 1",
@@ -233,6 +294,7 @@ export const deleteSiteAsset = async (req, res) => {
 
     res.json({ message: "Site image deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("UPLOAD ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

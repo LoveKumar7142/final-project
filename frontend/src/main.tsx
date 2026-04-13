@@ -3,14 +3,25 @@ import ReactDOM from "react-dom/client";
 import router from "./routes";
 import { RouterProvider } from "react-router-dom";
 import "./index.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
-import { Toaster } from "react-hot-toast";
-import { ReactLenis } from "lenis/react";
+import { Toaster, toast } from "react-hot-toast";
 
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error: any) => {
+      // Axios interceptor may already toast 500s, let's catch logical queries that fail here
+      console.error(`Query Failed: ${error.message}`);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error: any) => {
+      // Gracefully catch mutation failures system-wide 
+      toast.error(error.response?.data?.message || error.message || "Failed to update data.");
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // Cache data as fresh for 5 minutes (prevents refetching)
@@ -27,9 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <ReactLenis root options={{ lerp: 0.08, duration: 1.5, smoothWheel: true, syncTouch: true }}>
-            <RouterProvider router={router} />
-          </ReactLenis>
+          <RouterProvider router={router} />
           <Toaster position="top-right" />
         </AuthProvider>
       </ThemeProvider>

@@ -123,31 +123,31 @@ export default function Navbar() {
       </div>
 
       <div
-        className={`pointer-events-none fixed inset-x-0 top-[100px] z-30 lg:hidden transition-all duration-700 ease-out ${
+        className={`pointer-events-none fixed inset-x-0 bottom-0 top-[90px] z-30 flex justify-center pb-4 lg:hidden transition-all duration-700 ease-out ${
           isMenuOpen ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden={!isMenuOpen}
       >
         <div
-          className={`pointer-events-auto mx-auto w-[92%] max-w-md min-h-[calc(100vh-80px)] origin-top-right overflow-hidden rounded-[28px] border-l border-b border-[var(--border)] bg-[var(--bg-elevated)] shadow-[0_24px_90px_rgba(0,0,0,0.18)] transition-all duration-700 ease-out  ${
+          className={`pointer-events-auto w-[92%] max-w-md h-full origin-top-right overflow-y-auto overflow-x-hidden rounded-[28px] border border-[var(--border)] bg-[var(--bg-elevated)] shadow-[0_24px_90px_rgba(0,0,0,0.18)] transition-all duration-700 ease-out ${
             isMenuOpen
               ? "translate-x-0 translate-y-0 scale-100"
               : "translate-x-full -translate-y-10 scale-90"
           }`}
         >
-          <div className="relative flex min-h-[calc(100vh-80px)] flex-col px-6 pb-24 pt-24 sm:px-10">
+          <div className="relative flex h-full flex-col px-4 pb-6 pt-8 sm:px-8">
 
-            <nav className="flex flex-1 flex-col items-center justify-start gap-5 pt-10 sm:gap-6 sm:pt-14">
+            <nav className="flex flex-col items-center justify-start gap-1 pt-2 sm:gap-2 sm:pt-4">
               {navItems.map((item, index) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   onClick={() => setIsMenuOpen(false)}
                   className={({ isActive }) =>
-                    `w-full max-w-sm px-5 py-2 text-center text-lg font-medium tracking-[0.02em] transition-all duration-500 ${
+                    `w-full max-w-[160px] rounded-lg px-3 py-1 text-center text-sm font-medium tracking-[0.02em] transition-all duration-300 ${
                       isActive
-                        ? "text-[var(--accent)]"
-                        : "text-[var(--text)] hover:text-[var(--accent)]"
+                        ? "bg-[var(--accent)] text-[var(--bg)] shadow-sm"
+                        : "text-[var(--text)] hover:bg-black/5 dark:hover:bg-white/5"
                     }`
                   }
                   style={{
@@ -160,21 +160,24 @@ export default function Navbar() {
             </nav>
 
             <div
-              className={`mt-6 space-y-3 transition-all duration-500 ${
+              className={`mt-auto pt-6 pb-2 space-y-3 transition-all duration-500 ${
                 isMenuOpen
                   ? "translate-y-0 opacity-100 delay-300"
                   : "translate-y-4 opacity-0"
               }`}
             >
               {isAuthenticated ? (
-                <div className="space-y-3">
-                  <div className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-5 py-4 text-sm text-[var(--muted)]">
-                    Signed in as{" "}
-                    <span className="font-medium text-[var(--text)]">
-                      {user?.name || user?.email}
-                    </span>
+                <div className="space-y-2 mt-2 border-t border-[var(--border)] pt-3">
+                  <div className="flex items-center justify-center gap-2 rounded-[16px] bg-[var(--bg-soft)] p-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-[var(--bg)]">
+                       {(user?.name || user?.email || "U")[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0 pr-2 text-left">
+                      <p className="truncate text-xs font-medium text-[var(--text)] leading-tight">{user?.name || user?.email}</p>
+                      <p className="text-[10px] text-[var(--muted)]">Signed in successfully</p>
+                    </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <Button
                       variant="ghost"
                       className="w-full"

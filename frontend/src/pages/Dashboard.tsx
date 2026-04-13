@@ -26,6 +26,8 @@ import api, {
   uploadSiteAsset,
   deleteSiteAsset,
   reorderProjects,
+  uploadProfileHeroImage,
+  deleteProfileHeroImage,
   type AdminContentPayload,
   type SiteAsset,
   type SiteSetting,
@@ -113,6 +115,7 @@ export default function Dashboard() {
   const [archiveFile, setArchiveFile] = useState<File | null>(null);
   const [contentEditors, setContentEditors] = useState(defaultContentEditors);
   const [assetFiles, setAssetFiles] = useState<Record<string, File | null>>({});
+  const [profileHeroImageFile, setProfileHeroImageFile] = useState<File | null>(null);
   const [localProjectsList, setLocalProjectsList] = useState<Project[]>([]);
 
   const purchasedIds = useMemo(() => {
@@ -183,6 +186,14 @@ export default function Dashboard() {
       aboutItems: safeJsonStringify(adminContent.aboutItems || []),
     });
   }, [adminContent]);
+
+  const parsedProfile = useMemo(() => {
+    try {
+      return JSON.parse(contentEditors.profile) as Record<string, any>;
+    } catch {
+      return {};
+    }
+  }, [contentEditors.profile]);
 
   const parsedSiteAssets = useMemo(() => {
     try {
@@ -338,6 +349,31 @@ export default function Dashboard() {
     },
   });
 
+  const uploadProfileHeroImageMutation = useMutation({
+    mutationFn: async (file: File) => uploadProfileHeroImage(file),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-content"] });
+      toast.success("Profile hero image uploaded successfully");
+      setProfileHeroImageFile(null);
+    },
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || "Hero image upload failed";
+      toast.error(msg);
+    },
+  });
+
+  const deleteProfileHeroImageMutation = useMutation({
+    mutationFn: deleteProfileHeroImage,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-content"] });
+      toast.success("Profile hero image permanently deleted");
+    },
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || "Hero image deletion failed";
+      toast.error(msg);
+    },
+  });
+
   const deleteOrderMutation = useMutation({ mutationFn: deleteAdminOrder, onSuccess: async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
@@ -345,6 +381,31 @@ export default function Dashboard() {
     ]);
     toast.success("Order deleted successfully");
   }});
+
+  const updateHeroPositionMutation = useMutation({
+    mutationFn: async (position: string) => {
+      const payload: AdminContentPayload = {
+        profile: parseJsonEditor<Record<string, unknown>>("Profile", contentEditors.profile),
+        siteSettings: parseJsonEditor<SiteSetting[]>("Site settings", contentEditors.siteSettings),
+        siteAssets: parseJsonEditor<SiteAsset[]>("Site assets", contentEditors.siteAssets),
+        socialLinks: parseJsonEditor<Array<Record<string, unknown>>>("Social links", contentEditors.socialLinks),
+        homeStats: parseJsonEditor<Array<Record<string, unknown>>>("Home stats", contentEditors.homeStats),
+        capabilities: parseJsonEditor<Array<Record<string, unknown>>>("Capabilities", contentEditors.capabilities),
+        services: parseJsonEditor<Array<Record<string, unknown>>>("Services", contentEditors.services),
+        aboutSections: parseJsonEditor<Array<Record<string, unknown>>>("About sections", contentEditors.aboutSections),
+        aboutItems: parseJsonEditor<Array<Record<string, unknown>>>("About items", contentEditors.aboutItems),
+      };
+      if (payload.profile) {
+        payload.profile.hero_image_position = position;
+      }
+      return saveAdminContent(payload);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-content"] });
+      toast.success("Hero image position updated!");
+    },
+    onError: () => toast.error("Failed to update position"),
+  });
 
   const deleteMessageMutation = useMutation({ mutationFn: deleteAdminMessage, onSuccess: async () => {
     await Promise.all([
@@ -566,6 +627,65 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {/* Profile Hero Image Manager */}
+            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-soft)] p-4 md:col-span-2 lg:col-span-1">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-lg text-[var(--accent)]">Profile Hero Image</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Key: profile.hero_image</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {parsedProfile.hero_image ? (
+                    <>
+                      <a href={parsedProfile.hero_image} target="_blank" rel="noreferrer" download className="rounded-full px-3 py-2 text-xs border border-[var(--border)] bg-[var(--bg-soft)] text-[var(--text)] hover:text-blue-500 hover:border-blue-300 transition-colors" title="Download Image">
+                        Download
+                      </a>
+                      <button type="button" onClick={() => {
+                        if (window.confirm("Permanently delete profile hero image from the server?")) {
+                          deleteProfileHeroImageMutation.mutate();
+                        }
+                      }} className="rounded-full px-3 py-2 text-xs border border-[var(--border)] bg-red-50 text-red-500 hover:bg-red-100 transition-colors" disabled={deleteProfileHeroImageMutation.isPending} title="Delete Image from server">
+                        {deleteProfileHeroImageMutation.isPending ? "..." : "Delete"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+
+              {parsedProfile.hero_image ? <img src={parsedProfile.hero_image} alt="Profile Hero" className="mt-4 h-48 w-full rounded-[20px] object-cover" /> : <div className="mt-4 flex h-48 items-center justify-center rounded-[20px] border border-dashed border-[var(--border)] text-sm text-[var(--muted)]">No profile hero image yet</div>}
+              
+              <div className="mt-4 flex gap-4 items-center pl-1">
+                <span className="text-sm font-medium">Image Position:</span>
+                <select
+                  value={parsedProfile.hero_image_position || "right"}
+                  onChange={(e) => {
+                    const newPos = e.target.value;
+                    const next = { ...parsedProfile, hero_image_position: newPos };
+                    setContentEditors((current) => ({ ...current, profile: safeJsonStringify(next) }));
+                    updateHeroPositionMutation.mutate(newPos);
+                  }}
+                  disabled={updateHeroPositionMutation.isPending}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm outline-none"
+                >
+                  <option value="right">Right (Default)</option>
+                  <option value="left">Left</option>
+                </select>
+              </div>
+
+              <Input className="mt-4" placeholder="Image URL (Manual Edit)" value={parsedProfile.hero_image || ""} onChange={(e) => {
+                const next = { ...parsedProfile, hero_image: e.target.value };
+                setContentEditors((current) => ({ ...current, profile: safeJsonStringify(next) }));
+              }} />
+              
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input type="file" accept="image/*" onChange={(e) => setProfileHeroImageFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
+                <button type="button" className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm whitespace-nowrap" onClick={() => { 
+                  if (!profileHeroImageFile) { toast.error("Please choose an image file first"); return; } 
+                  uploadProfileHeroImageMutation.mutate(profileHeroImageFile); 
+                }} disabled={uploadProfileHeroImageMutation.isPending}><FiUploadCloud /> Upload</button>
+              </div>
+            </div>
+
             {parsedSiteAssets.map((asset, index) => (
               <div key={`${asset.asset_key}-${index}`} className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-soft)] p-4">
                 <div className="flex items-start justify-between gap-4">
