@@ -31,6 +31,56 @@ const api = axios.create({
 
 import toast from "react-hot-toast";
 
+const isDebuggableAdminRequest = (url?: string) =>
+  Boolean(
+    url &&
+      ["/api/admin", "/api/projects", "/api/upload"].some((prefix) =>
+        url.includes(prefix),
+      ),
+  );
+
+const buildRequestUrl = (config?: {
+  baseURL?: string;
+  url?: string;
+}) => {
+  if (!config?.url) return "unknown-url";
+  if (/^https?:\/\//i.test(config.url)) return config.url;
+  return `${config.baseURL || ""}${config.url}`;
+};
+
+export const logApiError = (label: string, error: any) => {
+  const requestInfo = {
+    method: error?.config?.method?.toUpperCase?.() || "UNKNOWN",
+    url: buildRequestUrl(error?.config),
+    params: error?.config?.params,
+    data: error?.config?.data,
+    headers: error?.config?.headers,
+  };
+
+  const responseInfo = error?.response
+    ? {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers,
+      }
+    : null;
+
+  console.group(`Admin Debug: ${label}`);
+  console.error("Request", requestInfo);
+  if (responseInfo) {
+    console.error("Response", responseInfo);
+  } else if (error?.request) {
+    console.error("Network request made but no response received", error.request);
+  } else {
+    console.error("Unexpected error", error);
+  }
+  if (error?.stack) {
+    console.error("Stack", error.stack);
+  }
+  console.groupEnd();
+};
+
 api.interceptors.request.use((config) => {
   let token = localStorage.getItem("token");
   const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -50,13 +100,34 @@ api.interceptors.request.use((config) => {
 
   config.headers["x-api-key"] = import.meta.env.VITE_API_KEY || "portfolio-secure-key-2026";
 
+  if (isDebuggableAdminRequest(config.url)) {
+    console.group(`Admin API Request: ${config.method?.toUpperCase()} ${buildRequestUrl(config)}`);
+    console.log("Params", config.params || null);
+    console.log("Payload", config.data || null);
+    console.groupEnd();
+  }
+
   return config;
 });
 
 // Global response error interceptor intercept errors globally.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (isDebuggableAdminRequest(response.config?.url)) {
+      console.group(
+        `Admin API Response: ${response.config?.method?.toUpperCase()} ${buildRequestUrl(response.config)}`,
+      );
+      console.log("Status", response.status);
+      console.log("Data", response.data);
+      console.groupEnd();
+    }
+    return response;
+  },
   (error) => {
+    if (isDebuggableAdminRequest(error?.config?.url)) {
+      logApiError("HTTP request failed", error);
+    }
+
     // We don't want to toast for basic 401s if they are part of standard app flow (like initial check)
     // But we want to toast 500s or unexpected errors globally.
     if (error.response) {
@@ -110,6 +181,7 @@ export type AdminContentPayload = {
   services: Array<Record<string, unknown>>;
   aboutSections: Array<Record<string, unknown>>;
   aboutItems: Array<Record<string, unknown>>;
+  legalPages: import("../types/contentModels").LegalPage[];
 };
 
 export type AdminMessage = {

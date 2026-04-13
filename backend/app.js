@@ -12,17 +12,17 @@ import rateLimit from "express-rate-limit";
 
 import testDB from "./config/testDb.js";
 
-import authRoutes from "./routes/authRoutes.js";
-import projectRoutes from "./routes/projectRoutes.js";
-import uploadRoutes from "./routes/uploadRoutes.js";
-import agreementRoutes from "./routes/agreementRoutes.js";
-import downloadRoutes from "./routes/downloadRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import contactRoutes from "./routes/contactRoutes.js";
-import contentRoutes from "./routes/contentRoutes.js";
-import consentRoutes from "./routes/consentRoutes.js";
+import authRoutes from "./routes/public/authRoutes.js";
+import projectRoutes from "./routes/public/projectRoutes.js";
+import uploadRoutes from "./routes/_x9f_protected_core/uploadRoutes.js";
+import agreementRoutes from "./routes/public/agreementRoutes.js";
+import downloadRoutes from "./routes/public/downloadRoutes.js";
+import paymentRoutes from "./routes/public/paymentRoutes.js";
+import orderRoutes from "./routes/_x9f_protected_core/orderRoutes.js";
+import adminRoutes from "./routes/_x9f_protected_core/adminRoutes.js";
+import contactRoutes from "./routes/public/contactRoutes.js";
+import contentRoutes from "./routes/public/contentRoutes.js";
+import consentRoutes from "./routes/public/consentRoutes.js";
 
 import { protect} from "./middleware/authMiddleware.js";
 import { isAdmin } from "./middleware/adminMiddleware.js";

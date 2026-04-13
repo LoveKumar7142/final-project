@@ -27,7 +27,9 @@ export default function Refunds() {
         <p className="mt-3 text-[var(--muted)]">Last updated: {data?.last_updated ? new Date(data.last_updated).toLocaleDateString() : '2026'}</p>
       </div>
       <Card className="rounded-[32px] p-6 sm:p-10 text-sm leading-relaxed text-[var(--muted)] space-y-6 whitespace-pre-wrap">
-        {data?.content?.sections?.length > 0 ? (
+        {typeof data?.content === "string" ? (
+          <div dangerouslySetInnerHTML={{ __html: data.content }} className="space-y-4" />
+        ) : data?.content?.sections?.length > 0 ? (
           data.content.sections.map((sec: any, idx: number) => (
             <div key={idx}>
               <h2 className="text-xl font-semibold text-[var(--text)] mb-2">{sec.title}</h2>

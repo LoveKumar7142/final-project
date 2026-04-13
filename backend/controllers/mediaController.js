@@ -57,7 +57,7 @@ export const uploadProfileHeroImage = async (req, res) => {
 export const deleteProfileHeroImage = async (req, res) => {
   try {
     const [profiles] = await pool.query(
-      "SELECT id, hero_image_public_id FROM portfolio_profile ORDER BY id ASC LIMIT 1"
+      "SELECT id, hero_image_public_id FROM portfolio_profile ORDER BY id ASC LIMIT 1",
     );
 
     if (profiles.length === 0) {
@@ -72,10 +72,13 @@ export const deleteProfileHeroImage = async (req, res) => {
 
     await pool.query(
       "UPDATE portfolio_profile SET hero_image = NULL, hero_image_public_id = NULL WHERE id = ?",
-      [profile.id]
+      [profile.id],
     );
 
-    res.json({ message: "Profile hero image deleted successfully from Cloudinary and database" });
+    res.json({
+      message:
+        "Profile hero image deleted successfully from Cloudinary and database",
+    });
   } catch (error) {
     console.error("DELETE ERROR:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -87,7 +90,7 @@ export const uploadProjectHeroImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-  
+
     const { id } = req.params;
     const [projects] = await pool.query(
       "SELECT id, slug, hero_image_public_id, image_public_id FROM projects WHERE id = ? OR slug = ? LIMIT 1",

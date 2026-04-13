@@ -11,7 +11,7 @@ export const validateRequest = (schema) => {
     } catch (error) {
       if (error instanceof z.ZodError) {
         // Collect exact field errors clearly
-        const errors = error.errors.map((e) => ({
+        const errors = error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         }));

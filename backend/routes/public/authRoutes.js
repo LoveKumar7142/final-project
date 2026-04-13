@@ -1,10 +1,10 @@
 ﻿import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
-import { lazyRoute } from "../utils/lazyRoute.js";
-import { rateLimiter } from "../middleware/rateLimiter.js";
+import { protect } from "../../middleware/authMiddleware.js";
+import { lazyRoute } from "../../utils/lazyRoute.js";
+import { rateLimiter } from "../../middleware/rateLimiter.js";
 
 const router = express.Router();
-const loadAuthController = () => import("../controllers/authController.js");
+const loadAuthController = () => import("../../controllers/authController.js");
 
 // 🔥 Public routes (rate limited)
 router.post(

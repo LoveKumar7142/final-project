@@ -7,10 +7,10 @@ import {
   getMessages,
   getOrders,
   saveAdminContent,
-} from "../controllers/adminController.js";
-import { protect } from "../middleware/authMiddleware.js";
-import { isAdmin } from "../middleware/adminMiddleware.js";
-import { rateLimiter } from "../middleware/rateLimiter.js"; // ✅ ADD THIS
+} from "../../controllers/adminController.js";
+import { protect } from "../../middleware/authMiddleware.js";
+import { isAdmin } from "../../middleware/adminMiddleware.js";
+import { rateLimiter } from "../../middleware/rateLimiter.js"; // ✅ ADD THIS
 
 const router = express.Router();
 

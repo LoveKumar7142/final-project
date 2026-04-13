@@ -1,27 +1,99 @@
 import { z } from "zod";
 
+const parseListValue = (value) => {
+  if (value === undefined || value === null || value === "") return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item).trim())
+          .filter(Boolean);
+      }
+    } catch {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+};
+
+const optionalTrimmedString = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null) return null;
+    const normalized = String(value).trim();
+    return normalized === "" ? null : normalized;
+  },
+  z.string().nullable().optional(),
+);
+
+const optionalUrlLikeString = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null) return null;
+    const normalized = String(value).trim();
+    return normalized === "" ? null : normalized;
+  },
+  z
+    .string()
+    .regex(
+      /^(https?:\/\/[^\s]+|\/[^\s]*)$/i,
+      "Must be a valid URL or root-relative path",
+    )
+    .nullable()
+    .optional(),
+);
+
+const booleanLike = z.preprocess(
+  (value) => {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value === 1;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "1", "yes", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "off", ""].includes(normalized)) return false;
+    }
+    return value;
+  },
+  z.boolean().optional(),
+);
+
+const numberLike = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === "") return undefined;
+    return Number(value);
+  },
+  z.number().finite().nonnegative().optional(),
+);
+
 export const projectSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters").max(100),
-  slug: z.string().min(2).max(100).optional(),
-  tagline: z.string().max(200).optional().nullable(),
-  description: z.string().min(10, "Description is too short"),
-  long_description: z.string().optional().nullable(),
-  tech: z.union([z.array(z.string()), z.string()]).transform(val => {
-    if (typeof val === 'string') return val.split(',').map(s => s.trim());
-    return val;
-  }).optional(),
-  gallery: z.union([z.array(z.string()), z.string()]).transform(val => {
-    if (typeof val === 'string') return [val]; // Very basic catch
-    return val;
-  }).optional(),
-  price: z.union([z.number(), z.string()]).transform(Number).optional(),
-  category: z.string().optional().nullable(),
-  accent: z.string().optional().nullable(),
-  demo_url: z.string().url("Must be a valid URL").optional().nullable(),
-  file_url: z.string().url("Must be a valid URL").optional().nullable(),
-  hero_image: z.string().optional().nullable(),
-  stats: z.any().optional(), // Could be stringified JSON or Array depending on frontend
-  is_featured: z.union([z.boolean(), z.number()]).transform(Boolean).optional(),
-  is_paid: z.union([z.boolean(), z.number()]).transform(Boolean).optional(),
-  status: z.enum(["published", "draft", "archived"]).optional().default("published"),
+  title: z.string().trim().min(2, "Title must be at least 2 characters").max(255),
+  slug: z.string().trim().min(1, "Slug is required").max(150),
+  tagline: optionalTrimmedString,
+  description: z.string().trim().min(10, "Description is too short"),
+  long_description: optionalTrimmedString,
+  tech: z.preprocess(parseListValue, z.array(z.string()).max(20)).optional(),
+  gallery: z.preprocess(parseListValue, z.array(z.string()).max(20)).optional(),
+  price: numberLike,
+  category: z.enum(["Free", "Paid"]).optional().nullable(),
+  demo_url: optionalUrlLikeString,
+  file: optionalUrlLikeString,
+  file_name: optionalTrimmedString,
+  hero_image: optionalUrlLikeString,
+  hero_image_public_id: optionalTrimmedString,
+  image_url: optionalUrlLikeString,
+  image_public_id: optionalTrimmedString,
+  file_public_id: optionalTrimmedString,
+  sort_order: numberLike,
+  is_featured: booleanLike,
+  is_paid: booleanLike,
 });

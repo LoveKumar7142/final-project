@@ -1,17 +1,17 @@
 import express from "express";
-import { rateLimiter } from "../middleware/rateLimiter.js";
+import { rateLimiter } from "../../middleware/rateLimiter.js";
 import uploadAny, {
   uploadArchive,
   uploadImage,
-} from "../middleware/uploadMiddleware.js";
-import { protect } from "../middleware/authMiddleware.js";
-import { isAdmin } from "../middleware/adminMiddleware.js";
-import { lazyRoute } from "../utils/lazyRoute.js";
+} from "../../middleware/uploadMiddleware.js";
+import { protect } from "../../middleware/authMiddleware.js";
+import { isAdmin } from "../../middleware/adminMiddleware.js";
+import { lazyRoute } from "../../utils/lazyRoute.js";
 
 const router = express.Router();
 
-const loadUploadController = () => import("../controllers/uploadController.js");
-const loadMediaController = () => import("../controllers/mediaController.js");
+const loadUploadController = () => import("../../controllers/uploadController.js");
+const loadMediaController = () => import("../../controllers/mediaController.js");
 
 // ✅ ID VALIDATION (for :id routes)
 const validateId = (req, res, next) => {

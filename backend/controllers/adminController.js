@@ -1,5 +1,27 @@
 import pool from "../config/db.js";
 
+const sendAdminDebugError = (res, label, error, fallbackMessage = "Internal server error") => {
+  console.error(`${label}:`, error);
+
+  const payload = {
+    message: error?.message || fallbackMessage,
+    details: error?.details || undefined,
+  };
+
+  if (process.env.NODE_ENV !== "production") {
+    payload.debug = {
+      name: error?.name,
+      code: error?.code,
+      errno: error?.errno,
+      sqlMessage: error?.sqlMessage,
+      sqlState: error?.sqlState,
+      stack: error?.stack,
+    };
+  }
+
+  return res.status(error?.statusCode || 500).json(payload);
+};
+
 const toText = (value) => {
   if (value === undefined || value === null) return null;
   const normalized = String(value).trim();
@@ -50,6 +72,9 @@ const readContentBundle = async () => {
   const [aboutItems] = await pool.query(
     "SELECT * FROM about_items ORDER BY section_key ASC, sort_order ASC, id ASC",
   );
+  const [legalPages] = await pool.query(
+    "SELECT * FROM legal_pages ORDER BY id ASC",
+  );
 
   return {
     profile: profileRows[0] || null,
@@ -61,6 +86,7 @@ const readContentBundle = async () => {
     services,
     aboutSections,
     aboutItems,
+    legalPages,
   };
 };
 
@@ -83,7 +109,7 @@ export const getAdminSummary = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    return sendAdminDebugError(res, "GET ADMIN SUMMARY ERROR", error);
   }
 };
 
@@ -103,8 +129,7 @@ export const getOrders = async (req, res) => {
 
     res.json(orders);
   } catch (error) {
-    console.error("GET ORDERS ERROR:", error);
-    res.status(500).json({ message: "Something went wrong" });
+    return sendAdminDebugError(res, "GET ORDERS ERROR", error, "Something went wrong");
   }
 };
 
@@ -130,8 +155,7 @@ export const deleteOrder = async (req, res) => {
 
     res.json({ message: "Order deleted successfully" });
   } catch (error) {
-    console.error("DELETE ORDER ERROR:", error); // only server log
-    res.status(500).json({ message: "Something went wrong" });
+    return sendAdminDebugError(res, "DELETE ORDER ERROR", error, "Something went wrong");
   }
 };
 
@@ -142,7 +166,7 @@ export const getMessages = async (req, res) => {
     );
     res.json(messages);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    return sendAdminDebugError(res, "GET MESSAGES ERROR", error);
   }
 };
 
@@ -152,7 +176,7 @@ export const deleteMessage = async (req, res) => {
     await pool.query("DELETE FROM messages WHERE id = ?", [id]);
     res.json({ message: "Message deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    return sendAdminDebugError(res, "DELETE MESSAGE ERROR", error);
   }
 };
 
@@ -161,7 +185,7 @@ export const getAdminContent = async (req, res) => {
     const content = await readContentBundle();
     res.json(content);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    return sendAdminDebugError(res, "GET ADMIN CONTENT ERROR", error);
   }
 };
 
@@ -180,6 +204,7 @@ export const saveAdminContent = async (req, res) => {
     const services = normalizeArray(req.body.services);
     const aboutSections = normalizeArray(req.body.aboutSections);
     const aboutItems = normalizeArray(req.body.aboutItems);
+    const legalPages = normalizeArray(req.body.legalPages);
 
     await connection.beginTransaction();
 
@@ -246,8 +271,8 @@ export const saveAdminContent = async (req, res) => {
           siteSettingsVals.push(
             toText(item.setting_key) || `setting_${index}`,
             toText(item.label) ||
-              toText(item.setting_key) ||
-              `Setting ${index}`,
+            toText(item.setting_key) ||
+            `Setting ${index}`,
             toText(item.setting_value),
             toText(item.setting_group) || "general",
             toNumber(item.sort_order, index + 1),
@@ -406,6 +431,25 @@ export const saveAdminContent = async (req, res) => {
       );
     }
 
+    await connection.query("DELETE FROM legal_pages");
+    if (legalPages.length > 0) {
+      const legalPagesVals = [];
+      const legalPagesPh = legalPages
+        .map((item, index) => {
+          legalPagesVals.push(
+            toText(item.page_key) || `page_${index}`,
+            toText(item.title) || "Legal Page",
+            typeof item.content === "string" ? item.content : JSON.stringify(item.content || {}),
+          );
+          return "(?, ?, ?)";
+        })
+        .join(",");
+      await connection.query(
+        `INSERT INTO legal_pages (page_key, title, content) VALUES ${legalPagesPh}`,
+        legalPagesVals,
+      );
+    }
+
     await connection.commit();
     connection.release(); // 🔥 Critical: Free connection before heavy read
 
@@ -420,18 +464,18 @@ export const saveAdminContent = async (req, res) => {
       .then((fs) =>
         fs.writeFileSync("admin_error.log", error.stack || error.message),
       )
-      .catch(() => {});
+      .catch(() => { });
     if (connection) {
       try {
         await connection.rollback();
-      } catch (e) {}
+      } catch (e) { }
     }
-    res.status(500).json({ message: "Internal server error" });
+    return sendAdminDebugError(res, "ADMIN UPDATE ERROR", error);
   } finally {
     if (connection) {
       try {
         connection.release();
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 };

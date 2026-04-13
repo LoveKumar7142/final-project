@@ -6,7 +6,29 @@ import {
   toNullableString,
   toTrimmedString,
 } from "../utils/validation.js";
+import { createUploadError } from "../middleware/uploadMiddleware.js";
 import { destroyCloudinaryAsset } from "../utils/cloudinaryAssets.js";
+
+const sendDebugError = (res, error, fallbackMessage = "Internal server error") => {
+  console.error("PROJECT ERROR:", error);
+
+  const payload = {
+    message: error?.message || fallbackMessage,
+    details: error?.details || undefined,
+  };
+
+  if (process.env.NODE_ENV !== "production") {
+    payload.debug = {
+      name: error?.name,
+      code: error?.code,
+      sqlMessage: error?.sqlMessage,
+      sqlState: error?.sqlState,
+      stack: error?.stack,
+    };
+  }
+
+  return res.status(error?.statusCode || 500).json(payload);
+};
 
 const normalizeProject = (project) => ({
   id: project.id,
@@ -165,10 +187,7 @@ export const addProject = async (req, res) => {
       project: createdProject ? normalizeProject(createdProject) : null,
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      message: error.message,
-      details: error.details || undefined,
-    });
+    return sendDebugError(res, error);
   }
 };
 
@@ -179,11 +198,7 @@ export const getProjects = async (req, res) => {
     );
     res.json(projects.map(normalizeProject));
   } catch (error) {
-    console.error("PROJECT ERROR:", error);
-
-    res.status(error.statusCode || 500).json({
-      message: error.statusCode ? error.message : "Internal server error",
-    });
+    return sendDebugError(res, error);
   }
 };
 
@@ -191,14 +206,11 @@ export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
     const safeId = Number(id);
-
-    if (!Number.isInteger(safeId) || safeId <= 0) {
-      return res.status(400).json({ message: "Invalid ID" });
-    }
+    const isNumericId = Number.isInteger(safeId) && safeId > 0;
 
     const [projects] = await pool.query(
       "SELECT * FROM projects WHERE id = ? OR slug = ? LIMIT 1",
-      [id, id],
+      [isNumericId ? safeId : 0, id],
     );
 
     if (projects.length === 0) {
@@ -207,11 +219,7 @@ export const getProjectById = async (req, res) => {
 
     res.json(normalizeProject(projects[0]));
   } catch (error) {
-    console.error("PROJECT ERROR:", error);
-
-    res.status(error.statusCode || 500).json({
-      message: error.statusCode ? error.message : "Internal server error",
-    });
+    return sendDebugError(res, error);
   }
 };
 
@@ -303,10 +311,7 @@ export const updateProject = async (req, res) => {
       project: updatedProject ? normalizeProject(updatedProject) : null,
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      message: error.message,
-      details: error.details || undefined,
-    });
+    return sendDebugError(res, error);
   }
 };
 
@@ -324,11 +329,7 @@ export const deleteProject = async (req, res) => {
 
     res.json({ message: "Project deleted successfully" });
   } catch (error) {
-    console.error("PROJECT ERROR:", error);
-
-    res.status(error.statusCode || 500).json({
-      message: error.statusCode ? error.message : "Internal server error",
-    });
+    return sendDebugError(res, error);
   }
 };
 
@@ -354,10 +355,6 @@ export const reorderProjects = async (req, res) => {
     }
     res.json({ message: "Projects reordered successfully" });
   } catch (error) {
-    console.error("PROJECT ERROR:", error);
-
-    res.status(error.statusCode || 500).json({
-      message: error.statusCode ? error.message : "Internal server error",
-    });
+    return sendDebugError(res, error);
   }
 };

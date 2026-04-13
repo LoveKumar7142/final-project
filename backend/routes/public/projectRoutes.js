@@ -1,5 +1,5 @@
 import express from "express";
-import { rateLimiter } from "../middleware/rateLimiter.js";
+import { rateLimiter } from "../../middleware/rateLimiter.js";
 import {
   addProject,
   getProjects,
@@ -7,12 +7,12 @@ import {
   updateProject,
   deleteProject,
   reorderProjects,
-} from "../controllers/projectController.js";
+} from "../../controllers/projectController.js";
 
-import { protect } from "../middleware/authMiddleware.js";
-import { isAdmin } from "../middleware/adminMiddleware.js";
-import { validateRequest } from "../middleware/validationMiddleware.js";
-import { projectSchema } from "../schemas/projectSchema.js";
+import { protect } from "../../middleware/authMiddleware.js";
+import { isAdmin } from "../../middleware/adminMiddleware.js";
+import { validateRequest } from "../../middleware/validationMiddleware.js";
+import { projectSchema } from "../../schemas/projectSchema.js";
 
 const router = express.Router();
 
@@ -41,8 +41,8 @@ router.put("/reorder", rateLimiter, protect, isAdmin, (req, res, next) => {
   next();
 }, reorderProjects);
 
-// 🔹 GET PROJECT BY ID (PUBLIC)
-router.get("/:id", rateLimiter, validateId, getProjectById);
+// 🔹 GET PROJECT BY ID OR SLUG (PUBLIC)
+router.get("/:id", rateLimiter, getProjectById);
 
 // 🔹 UPDATE PROJECT
 router.put("/:id", rateLimiter, protect, isAdmin, validateId, validateRequest(projectSchema), updateProject);

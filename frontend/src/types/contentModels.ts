@@ -89,6 +89,40 @@ export type ServiceOffering = {
   is_active?: boolean;
 };
 
+export type LegalPage = {
+  id?: number;
+  page_key: string;
+  title: string;
+  content: string | Record<string, any>;
+  last_updated?: string;
+};
+
+export type AdminContentPayload = {
+  profile: Record<string, unknown> | null;
+  siteSettings: any[];
+  siteAssets: SiteAsset[];
+  socialLinks: Array<Record<string, unknown>>;
+  homeStats: Array<Record<string, unknown>>;
+  capabilities: Array<Record<string, unknown>>;
+  services: Array<Record<string, unknown>>;
+  aboutSections: Array<Record<string, unknown>>;
+  aboutItems: Array<Record<string, unknown>>;
+  legalPages: LegalPage[];
+};
+
+export type AdminContentResponse = {
+  profile: Profile | null;
+  siteSettings: any[];
+  siteAssets: SiteAsset[];
+  socialLinks: SocialLink[];
+  homeStats: ContentItem[];
+  capabilities: ContentSection[];
+  services: ServiceOffering[];
+  aboutSections: ContentSection[];
+  aboutItems: ContentItem[];
+  legalPages: LegalPage[];
+};
+
 export type HomeContentResponse = {
   profile: Profile | null;
   siteAssets: SiteAsset[];

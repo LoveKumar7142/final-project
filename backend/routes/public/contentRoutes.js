@@ -4,8 +4,8 @@ import {
   getHomeContent,
   getSiteAssetsContent,
   getLegalContent,
-} from "../controllers/contentController.js";
-import { rateLimiter } from "../middleware/rateLimiter.js";
+} from "../../controllers/contentController.js";
+import { rateLimiter } from "../../middleware/rateLimiter.js";
 
 const router = express.Router();
 

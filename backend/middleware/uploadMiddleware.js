@@ -21,7 +21,7 @@ const allowedArchiveMimeTypes = new Set([
   "application/x-rar-compressed",
 ]);
 
-const createUploadError = (message) => {
+export const createUploadError = (message) => {
   const error = new Error(message);
   error.statusCode = 400;
   return error;

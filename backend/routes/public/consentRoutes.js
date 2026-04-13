@@ -1,5 +1,5 @@
 import express from "express";
-import pool from "../config/db.js";
+import pool from "../../config/db.js";
 
 const router = express.Router();
 
@@ -27,6 +27,32 @@ router.post("/accept", async (req, res) => {
     console.error("CONSENT LOG ERROR:", error);
     // Suppress heavy database errors to client side
     res.status(500).json({ message: "Failed to record consent securely" });
+  }
+});
+
+router.get("/settings", async (req, res) => {
+  try {
+    const [settings] = await pool.query(
+      "SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('cookie_banner_title', 'cookie_banner_text')"
+    );
+    
+    // Convert to simple key-value object
+    const config = settings.reduce((acc, row) => {
+      acc[row.setting_key] = row.setting_value;
+      return acc;
+    }, {});
+    
+    // Provide defaults if missing
+    res.json({
+      title: config.cookie_banner_title || "We value your privacy",
+      text: config.cookie_banner_text || "We use cookies to improve your browsing experience and analyze our traffic. Please choose your preference."
+    });
+  } catch (error) {
+    console.error("COOKIE SETTINGS ERROR:", error);
+    res.json({
+      title: "We value your privacy",
+      text: "We use cookies to improve your browsing experience and analyze our traffic. Please choose your preference."
+    });
   }
 });
 

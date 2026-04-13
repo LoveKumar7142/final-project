@@ -30,39 +30,39 @@ export default function PublicLayout() {
       </main>
       <footer className="mx-auto mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="panel rounded-[32px] px-6 py-7 sm:px-8">
-          <div className="grid items-start gap-8 lg:grid-cols-[1fr_0.95fr_1.05fr]">
-            <div>
+          <div className="grid items-start gap-8 lg:grid-cols-3">
+            <div className="flex flex-col items-start text-left">
               <div className="flex items-center gap-3">
                 <img
                   src={theme === "light" ? "/love-kumar-logo-light.png" : "/love-kumar-logo.png"}
                   alt="Love Kumar logo"
                   className="h-12 w-12 rounded-2xl object-cover"
                 />
-                <p className="text-lg font-semibold">{data?.profile?.full_name || "Love Kumar"}</p>
+                <p className="text-xl font-semibold">{data?.profile?.full_name || "Love Kumar"}</p>
               </div>
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                {data?.profile?.headline || data?.profile?.hero_description || "Update footer content from database."}
+              <p className="mt-4 text-sm font-medium text-[var(--text)]">
+                Full Stack Developer | MCA | Software Development Intern
               </p>
-            </div>
 
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Contact & Legal</p>
-              <div className="mt-3 space-y-2 text-sm">
-                {data?.profile?.email ? <a href={`mailto:${data.profile.email}`} className="flex items-center gap-2 hover:underline"><FiMail className="text-[var(--muted)]" />{data.profile.email}</a> : null}
-                {data?.profile?.phone ? <a href={`tel:${data.profile.phone.replace(/\s+/g, "")}`} className="flex items-center gap-2 hover:underline"><FiPhone className="text-[var(--muted)]" />{data.profile.phone}</a> : null}
-                {data?.profile?.location ? <p className="flex items-center gap-2 text-[var(--muted)]"><FiMapPin />{data.profile.location}</p> : null}
-                
-                <div className="border-t border-[var(--border)] pt-2 mt-2 flex flex-col gap-2">
-                  <Link to="/terms" className="text-[var(--muted)] hover:text-[var(--text)] transition">Terms & Conditions</Link>
-                  <Link to="/privacy" className="text-[var(--muted)] hover:text-[var(--text)] transition">Privacy Policy</Link>
-                  <Link to="/refunds" className="text-[var(--muted)] hover:text-[var(--text)] transition">Refunds & Cancellation</Link>
-                </div>
+              <div className="mt-5 space-y-3 text-sm text-[var(--muted)] flex flex-col items-start">
+                {data?.profile?.email ? <a href={`mailto:${data.profile.email}`} className="flex items-center gap-2 hover:underline hover:text-[var(--text)] transition"><FiMail />{data.profile.email}</a> : null}
+                {data?.profile?.phone ? <a href={`tel:${data.profile.phone.replace(/\s+/g, "")}`} className="flex items-center gap-2 hover:underline hover:text-[var(--text)] transition"><FiPhone />{data.profile.phone}</a> : null}
+                {data?.profile?.location ? <p className="flex items-center gap-2"><FiMapPin />{data.profile.location}</p> : null}
               </div>
             </div>
 
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Social Links</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 text-sm">
+            <div className="flex flex-col items-start lg:items-center text-left lg:text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--text)]">Policies</p>
+              <div className="mt-5 flex flex-col gap-4 text-sm">
+                <Link to="/terms" className="text-[var(--muted)] hover:text-[var(--text)] transition">Terms & Conditions</Link>
+                <Link to="/privacy" className="text-[var(--muted)] hover:text-[var(--text)] transition">Privacy Policy</Link>
+                <Link to="/refunds" className="text-[var(--muted)] hover:text-[var(--text)] transition">Refunds & Cancellation</Link>
+              </div>
+            </div>
+
+            <div className="lg:justify-self-end flex flex-col items-center lg:max-w-[280px] text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--text)]">Social Links</p>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                 {data?.socialLinks?.map((link) => (
                   <a
                     key={link.id}
