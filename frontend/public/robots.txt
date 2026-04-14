@@ -1,10 +1,17 @@
 User-agent: *
 Allow: /
 
-# Prevent crawling of secure/account areas
+# Prevent crawling of sensitive areas
 Disallow: /admin/
-Disallow: /dashboard
+Disallow: /dashboard/
 Disallow: /api/
 Disallow: /checkout/
 
-Sitemap: https://yourdomain.com/sitemap.xml
+# Allow important pages
+Allow: /
+Allow: /hire-me
+Allow: /services
+Allow: /projects
+
+# Sitemap
+Sitemap: https://lovecode.icu/sitemap.xml

@@ -10,7 +10,7 @@ cloudinary.config({
 
 // 🔍 DEBUG (optional but useful)
 console.log("☁️ Cloudinary Config Loaded:", {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "✅ OK" : "❌ Missing",
+  cloud_name: process.env.CLOUD_NAME ? "✅ OK" : "❌ Missing",
 });
 
 // 🚀 UPLOAD FUNCTION

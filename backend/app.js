@@ -1,4 +1,4 @@
-import v8 from "v8";
+﻿import v8 from "v8";
 v8.setFlagsFromString("--max-old-space-size=4096 --no-wasm-tier-up");
 
 import express from "express";
@@ -24,7 +24,7 @@ import contactRoutes from "./routes/public/contactRoutes.js";
 import contentRoutes from "./routes/public/contentRoutes.js";
 import consentRoutes from "./routes/public/consentRoutes.js";
 
-import { protect} from "./middleware/authMiddleware.js";
+import { protect } from "./middleware/authMiddleware.js";
 import { isAdmin } from "./middleware/adminMiddleware.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 
@@ -44,7 +44,7 @@ app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: false, // APIs only
-  })
+  }),
 );
 
 // ================= COMPRESSION =================
@@ -63,9 +63,7 @@ app.use(
     origin(origin, callback) {
       if (!origin) return callback(null, true);
 
-      const isAllowed = allowedOrigins.some(
-        (allowed) => origin === allowed
-      );
+      const isAllowed = allowedOrigins.some((allowed) => origin === allowed);
 
       if (allowAllOrigins || isAllowed) {
         return callback(null, true);
@@ -75,7 +73,7 @@ app.use(
       return callback(null, false); // ❗ safe block
     },
     credentials: true,
-  })
+  }),
 );
 
 // ================= BODY =================
@@ -108,6 +106,25 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 app.use("/api/auth", authLimiter);
 
+// ================= 🔐 DOMAIN CHECK =================
+const domainCheck = (req, res, next) => {
+  const allowedHosts = ["lovecode.icu", "www.lovecode.icu"];
+
+  const host =
+    req.headers["x-forwarded-host"] || req.headers.host;
+
+  if (process.env.NODE_ENV === "development") {
+    return next();
+  }
+
+  if (!host || !allowedHosts.some((h) => host.includes(h))) {
+    return res.status(403).json({
+      message: "Forbidden - Only domain access allowed",
+    });
+  }
+
+  next();
+};
 // ================= ROUTES =================
 
 // 🔹 ROOT
@@ -142,6 +159,50 @@ app.use("/api/orders", protect, orderRoutes);
 // ================= ADMIN ROUTES =================
 app.use("/api/admin", protect, isAdmin, adminRoutes);
 
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const baseUrl = "https://lovecode.icu";
+
+    // 🔥 Static pages
+    const staticPages = [
+      "",
+      "/hire-me",
+      "/services",
+      "/projects",
+      "/contact",
+      "/about",
+    ];
+
+    // 🔥 Dynamic pages (future use - projects/blog)
+    // abhi empty rakh sakte ho
+    const dynamicPages = [];
+
+    const allPages = [...staticPages, ...dynamicPages];
+
+    let sitemap = `<?xml version="1.0" encoding="UTF-8"?>`;
+    sitemap += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+    allPages.forEach((page) => {
+      sitemap += `
+                  <url>
+                    <loc>${baseUrl}${page}</loc>
+                    <lastmod>${new Date().toISOString()}</lastmod>
+                    <changefreq>weekly</changefreq>
+                    <priority>${page === "" ? "1.0" : "0.8"}</priority>
+                  </url>
+                `;
+    });
+
+    sitemap += `</urlset>`;
+
+    res.header("Content-Type", "application/xml");
+    res.send(sitemap);
+  } catch (error) {
+    console.error("Sitemap Error:", error);
+    res.status(500).end();
+  }
+});
+
 // ================= ERROR HANDLING =================
 app.use(notFound);
 app.use(errorHandler);
@@ -149,16 +210,15 @@ app.use(errorHandler);
 // ================= START SERVER =================
 const startServer = async () => {
   try {
-    const dbConnected = await testDB();
+    // const dbConnected = await testDB();
 
-    if (!dbConnected) {
-      throw new Error("Database not connected");
-    }
+    // if (!dbConnected) {
+    //   throw new Error("Database not connected");
+    // }
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
-
   } catch (error) {
     console.error("❌ Server failed:", error.message);
     process.exit(1); // ❗ crash safely
