@@ -1,7 +1,4 @@
-﻿import v8 from "v8";
-v8.setFlagsFromString("--max-old-space-size=4096 --no-wasm-tier-up");
-
-import express from "express";
+﻿import express from "express";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -27,8 +24,32 @@ import consentRoutes from "./routes/public/consentRoutes.js";
 import { protect } from "./middleware/authMiddleware.js";
 import { isAdmin } from "./middleware/adminMiddleware.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
+import { requestMonitor } from "./middleware/requestMonitor.js";
 
 const app = express();
+
+process.on("unhandledRejection", (error) => {
+  console.error("UNHANDLED REJECTION:", error);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("UNCAUGHT EXCEPTION:", error);
+});
+
+setInterval(() => {
+  const { rss, heapUsed, heapTotal } = process.memoryUsage();
+  const rssMb = Math.round((rss / 1024 / 1024) * 10) / 10;
+  const heapUsedMb = Math.round((heapUsed / 1024 / 1024) * 10) / 10;
+  const heapTotalMb = Math.round((heapTotal / 1024 / 1024) * 10) / 10;
+
+  if (heapUsedMb > 350 || rssMb > 450) {
+    console.warn("⚠️ High memory usage:", {
+      rssMb,
+      heapUsedMb,
+      heapTotalMb,
+    });
+  }
+}, 60000).unref();
 
 // ✅ PORT VALIDATION
 const PORT = Number(process.env.PORT) || 5000;
@@ -79,6 +100,7 @@ app.use(
 // ================= BODY =================
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(requestMonitor);
 
 // ================= DEBUG (DEV ONLY) =================
 if (process.env.NODE_ENV === "development") {
@@ -129,12 +151,12 @@ const domainCheck = (req, res, next) => {
 
 // 🔹 ROOT
 app.get("/", (req, res) => {
-  res.send("<h1>🚀 Backend Running Successfully</h1>");
+  res.json({ message: "Backend Running Successfully" });
 });
 
 // 🔹 HEALTH CHECK
 app.get("/health", (req, res) => {
-  res.send("OK");
+  res.json({ status: "ok" });
 });
 
 // 🔹 API CHECK
@@ -210,11 +232,11 @@ app.use(errorHandler);
 // ================= START SERVER =================
 const startServer = async () => {
   try {
-    // const dbConnected = await testDB();
+    const dbConnected = await testDB();
 
-    // if (!dbConnected) {
-    //   throw new Error("Database not connected");
-    // }
+    if (!dbConnected) {
+      console.warn("⚠️ Database check failed. Starting server in degraded mode.");
+    }
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

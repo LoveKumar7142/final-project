@@ -1,14 +1,11 @@
 import pool from "../config/db.js";
-import {
-  sendAutoReplyEmail,
-  sendOrderNotificationEmail,
-} from "../utils/mailer.js";
-import { getRazorpay } from "../config/razorpay.js";
+import { createRazorpayOrder } from "../utils/razorpayApi.js";
+
+const loadMailer = async () => import("../utils/mailer.js");
 
 // 🔹 Create Order (Hire Me)
 export const createHireOrder = async (req, res) => {
   try {
-    const razorpay = await getRazorpay();
     const { name, email, project_type, description, budget } = req.body;
     // ✅ Validation
     if (!name || name.length < 2) {
@@ -34,7 +31,7 @@ export const createHireOrder = async (req, res) => {
       receipt: `hire_${Date.now()}`,
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await createRazorpayOrder(options);
 
     res.json({
       order,
@@ -104,6 +101,9 @@ export const verifyHirePayment = async (req, res) => {
     );
 
     try {
+      const { sendAutoReplyEmail, sendOrderNotificationEmail } =
+        await loadMailer();
+
       await sendOrderNotificationEmail({
         name,
         email,

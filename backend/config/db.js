@@ -28,10 +28,6 @@ const pool = mysql.createPool({
   decimalNumbers: true,
   multipleStatements: false,
 
-  // 🔐 SSL (important for production hosting)
-  ssl: {
-    rejectUnauthorized: false,
-  },
 });
 
 export default pool;

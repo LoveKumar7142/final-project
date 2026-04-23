@@ -1,12 +1,13 @@
 import pool from "../config/db.js";
 const cache = new Map();
 const CACHE_TTL = 60000; // 1 minute
-setInterval(
+const cacheCleanupTimer = setInterval(
   () => {
     cache.clear();
   },
   5 * 60 * 1000,
 );
+cacheCleanupTimer.unref();
 
 const getProfile = async () => {
   const [rows] = await pool.query(

@@ -1,15 +1,12 @@
 import crypto from "crypto";
 import pool from "../config/db.js";
-import {
-  sendAutoReplyEmail,
-  sendProjectSaleNotificationEmail,
-} from "../utils/mailer.js";
-import { getRazorpay } from "../config/razorpay.js";
+import { createRazorpayOrder } from "../utils/razorpayApi.js";
+
+const loadMailer = async () => import("../utils/mailer.js");
 
 // 🔹 Create Order
 export const createOrder = async (req, res) => {
   try {
-    const razorpay = await getRazorpay();
     const { projectId } = req.body;
     if (!projectId || isNaN(projectId)) {
       return res.status(400).json({ message: "Invalid project ID" });
@@ -31,7 +28,7 @@ export const createOrder = async (req, res) => {
       receipt: `receipt_${Date.now()}`,
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await createRazorpayOrder(options);
 
     res.json({
       order,
@@ -101,6 +98,9 @@ export const verifyPayment = async (req, res) => {
     const user = users[0];
 
     try {
+      const { sendAutoReplyEmail, sendProjectSaleNotificationEmail } =
+        await loadMailer();
+
       await sendProjectSaleNotificationEmail({
         customerName: user?.name || "Customer",
         customerEmail: user?.email || "",

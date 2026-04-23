@@ -2,13 +2,10 @@ import pool from "../config/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateToken } from "../utils/jwt.js";
-import { verifyFirebaseToken } from "../config/firebaseAdmin.js";
-import {
-  sendOtpVerificationEmail,
-  sendPasswordResetEmail,
-} from "../utils/mailer.js";
 
 const OTP_EXPIRY_MINUTES = 10;
+const loadMailer = async () => import("../utils/mailer.js");
+const loadFirebaseAuth = async () => import("../config/firebaseAdmin.js");
 
 // ================= HELPERS =================
 const sanitizeUser = (user) => ({
@@ -75,6 +72,8 @@ const requestRegistrationOtp = async ({ name, email, password }) => {
      verified_at=NULL`,
     [name.trim(), normalizedEmail, hashedPassword, otpCode, expiresAt],
   );
+
+  const { sendOtpVerificationEmail } = await loadMailer();
 
   await sendOtpVerificationEmail({
     name: name.trim(),
@@ -227,6 +226,7 @@ export const firebaseLogin = async (req, res) => {
   try {
     const { idToken } = req.body;
 
+    const { verifyFirebaseToken } = await loadFirebaseAuth();
     const decoded = await verifyFirebaseToken(idToken);
 
     if (!decoded.email) {
@@ -306,6 +306,8 @@ export const forgotPassword = async (req, res) => {
 
     // ✅ Send safe URL matching the React Router layout (/:userId/:token)
     const url = `${process.env.CLIENT_ORIGIN}/reset-password/${user.id}/${token}`;
+
+    const { sendPasswordResetEmail } = await loadMailer();
 
     await sendPasswordResetEmail({
       name: user.name,

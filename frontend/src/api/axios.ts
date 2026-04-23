@@ -13,13 +13,13 @@ const resolveApiBaseUrl = () => {
   }
 
   if (typeof window === "undefined") {
-    return "http://localhost:5000";
+    return "https://lovecode.icu";
   }
 
   const { hostname, origin } = window.location;
 
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return "http://localhost:5000";
+    return "https://lovecode.icu";
   }
 
   return normalizeBaseUrl(origin);

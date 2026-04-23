@@ -1,4 +1,18 @@
 const rateMap = new Map();
+const WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS = 50;
+
+const cleanupTimer = setInterval(() => {
+  const now = Date.now();
+
+  for (const [ip, data] of rateMap.entries()) {
+    if (now - data.time >= WINDOW_MS) {
+      rateMap.delete(ip);
+    }
+  }
+}, WINDOW_MS);
+
+cleanupTimer.unref();
 
 export const rateLimiter = (req, res, next) => {
   try {
@@ -12,14 +26,12 @@ export const rateLimiter = (req, res, next) => {
 
     const data = rateMap.get(ip);
 
-    // 1 minute window
-    if (now - data.time < 60000) {
-      if (data.count >= 50) {
+    if (now - data.time < WINDOW_MS) {
+      if (data.count >= MAX_REQUESTS) {
         return res.status(429).json({ message: "Too many requests" });
       }
       data.count++;
     } else {
-      // reset after 1 min
       rateMap.set(ip, { count: 1, time: now });
     }
 
